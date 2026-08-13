@@ -1,0 +1,31 @@
+# EditorConfig ajuda os desenvolvedores a definir e manter estilos
+# de codificação consistentes entre diferentes editores e IDEs.
+# Saiba mais em: https://editorconfig.org
+
+root = true
+
+# Configurações globais para todos os arquivos
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Configurações específicas para arquivos Kotlin (.kt e .kts)
+[*.{kt,kts}]
+# Define o tamanho do recuo e tabulação (padrão oficial é 4 espaços)
+indent_size = 4
+continuation_indent_size = 4
+
+# Ativa o estilo oficial recomendado pela JetBrains/Kotlin
+ij_kotlin_imports_layout = *
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+# Limite de caracteres por linha (geralmente entre 100 e 120)
+max_line_length = 120
+
+# Evita que o IntelliJ quebre linhas em lugares indesejados automaticamente
+ij_kotlin_wrap_expression_body = false

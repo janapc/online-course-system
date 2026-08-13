@@ -1,0 +1,39 @@
+name: Continuous Integration
+
+on:
+    push:
+        branches: [ "main", "master", "develop" ]
+    pull_request:
+        branches: [ "main", "master", "develop" ]
+
+jobs:
+    build-and-test:
+        name: Build & Test
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Checkout Code
+                uses: actions/checkout@v4
+
+            -   name: Set up JDK 21
+                uses: actions/setup-java@v4
+                with:
+                    java-version: '21'
+                    distribution: 'temurin'
+                    cache: 'gradle'
+
+            -   name: Grant Execute Permission for Gradlew
+                run: chmod +x gradlew
+
+            -   name: Run Unit and Integration Tests
+                run: ./gradlew test --no-daemon
+
+            -   name: Build Application Artifact (bootJar)
+                run: ./gradlew bootJar -x test --no-daemon
+
+            -   name: Upload Test Report Artifact (Optional)
+                if: always()
+                uses: actions/upload-artifact@v4
+                with:
+                    name: gradle-test-results
+                    path: build/reports/tests/test/
