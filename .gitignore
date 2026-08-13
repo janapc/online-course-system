@@ -1,54 +1,20 @@
-HELP.md
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-### Kotlin ###
-.kotlin
-
+# ============================================================================
+# SEGREDOS E VARIÁVEIS DE AMBIENTE (NUNCA SUBIR)
+# ============================================================================
 .env
-
 .env.local
 .env.*.local
 *.pem
 *.key
 
+# ============================================================================
+# ARQUIVOS COMPILADOS E BUILDS
+# ============================================================================
 .gradle/
+build/
+out/
+bin/
 *.class
-*.jar
 *.war
 *.nar
 *.ear
@@ -56,11 +22,55 @@ out/
 *.tar.gz
 *.rar
 
+# Bloqueia todos os JARs
+*.jar
+
+# EXCEÇÃO OBRIGATÓRIA: Permite o JAR do Gradle Wrapper para o GitHub Actions
+!gradle/wrapper/gradle-wrapper.jar
+
+# ============================================================================
+# CONFIGURAÇÕES DE IDEs
+# ============================================================================
+# IntelliJ IDEA
 .idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Kotlin / Outros
+.kotlin
+HELP.md
+
+# ============================================================================
+# DADOS LOCAIS DO DOCKER / BANCO DE DADOS
+# ============================================================================
 postgres_data/
 .mongo/
 *.db
 *.sqlite
+
+# ============================================================================
+# SISTEMA OPERACIONAL
+# ============================================================================
 .DS_Store
 .DS_Store?
 ._*
