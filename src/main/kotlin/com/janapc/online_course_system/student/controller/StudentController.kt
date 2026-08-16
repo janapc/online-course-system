@@ -2,9 +2,11 @@ package com.janapc.online_course_system.student.controller
 
 import com.janapc.online_course_system.course.dto.CourseSummaryResponse
 import com.janapc.online_course_system.enrollment.service.EnrollmentService
+import com.janapc.online_course_system.student.dto.CreateStudentBatchRequest
 import com.janapc.online_course_system.student.dto.CreateStudentRequest
 import com.janapc.online_course_system.student.dto.StudentResponse
 import com.janapc.online_course_system.student.dto.UpdateStudentRequest
+import com.janapc.online_course_system.student.queue.StudentBatchProducer
 import com.janapc.online_course_system.student.service.StudentService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.*
 class StudentController(
     private val studentService: StudentService,
     private val enrollmentService: EnrollmentService,
+    private val studentBatchProducer: StudentBatchProducer,
 ) {
 
     @Operation(summary = "List all students with optional filters")
@@ -76,5 +79,15 @@ class StudentController(
     @GetMapping("/{id}/courses")
     fun findCourses(@PathVariable id: Long): List<CourseSummaryResponse> {
         return enrollmentService.findCoursesByStudent(id)
+    }
+
+    @Operation(summary = "Enqueue a batch of students for creation (ADMIN only)")
+    @PostMapping("/batch")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasRole('ADMIN')")
+    fun createBatch(
+        @Valid @RequestBody requests: CreateStudentBatchRequest,
+    ) {
+        studentBatchProducer.sendToQueue(requests.students)
     }
 }

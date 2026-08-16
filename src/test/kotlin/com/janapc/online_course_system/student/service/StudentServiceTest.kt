@@ -8,6 +8,7 @@ import com.janapc.online_course_system.student.exception.StudentNotFoundExceptio
 import com.janapc.online_course_system.student.repository.StudentRepository
 import java.util.*
 import kotlin.test.assertEquals
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -252,5 +253,39 @@ class StudentServiceTest {
             )
         }
     }
-    
+
+    @Nested
+    inner class CreateAllInBatch {
+        @Test
+        @DisplayName("Shoul create all students")
+        fun shouldCreateAllStudents() {
+            val students = listOf(
+                Student(
+                    id = 1L,
+                    name = "Student 1",
+                    email = "student1@email.com",
+                    active = true,
+                ),
+                Student(
+                    id = 2L,
+                    name = "Student 2",
+                    email = "student2@email.com",
+                    active = true,
+                ),
+            )
+            val request = listOf(
+                CreateStudentRequest(
+                    name = "Student 1",
+                    email = "student1@email.com",
+                ),
+                CreateStudentRequest(
+                    name = "Student 2",
+                    email = "student2@email.com",
+                ),
+            )
+            whenever(studentRepository.saveAll(any<Iterable<Student>>())).thenReturn(students)
+            studentService.createAllInBatch(request)
+            verify(studentRepository).saveAll(any<Iterable<Student>>())
+        }
+    }
 }

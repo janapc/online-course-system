@@ -5,19 +5,18 @@ import com.janapc.online_course_system.course.dto.CourseSummaryResponse
 import com.janapc.online_course_system.enrollment.service.EnrollmentService
 import com.janapc.online_course_system.security.config.JwtFilter
 import com.janapc.online_course_system.security.config.JwtService
+import com.janapc.online_course_system.student.dto.CreateStudentBatchRequest
 import com.janapc.online_course_system.student.dto.CreateStudentRequest
 import com.janapc.online_course_system.student.dto.StudentResponse
 import com.janapc.online_course_system.student.dto.UpdateStudentRequest
 import com.janapc.online_course_system.student.exception.StudentNotFoundException
+import com.janapc.online_course_system.student.queue.StudentBatchProducer
 import com.janapc.online_course_system.student.service.StudentService
 import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doNothing
-import org.mockito.kotlin.doThrow
-import org.mockito.kotlin.whenever
+import org.mockito.kotlin.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -57,6 +56,9 @@ class StudentControllerTest {
 
     @MockitoBean
     private lateinit var enrollmentService: EnrollmentService
+
+    @MockitoBean
+    private lateinit var studentBatchProducer: StudentBatchProducer
 
     private val now = LocalDateTime.now()
 
@@ -248,6 +250,45 @@ class StudentControllerTest {
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$[0].id").value(10))
                 .andExpect(jsonPath("$[0].name").value("Kotlin for Beginners"))
+        }
+    }
+
+
+    @Nested
+    @DisplayName("POST /students/batch")
+    inner class CreateBatchTests {
+
+        @Test
+        @DisplayName("Should return 202 Accepted when batch request is valid")
+        fun shouldCreateBatchSuccessfully() {
+            val student1 = CreateStudentRequest(name = "Test One", email = "one@test.com")
+            val student2 = CreateStudentRequest(name = "Test Two", email = "two@test.com")
+            val request = CreateStudentBatchRequest(students = listOf(student1, student2))
+
+            doNothing().whenever(studentBatchProducer).sendToQueue(request.students)
+
+            mockMvc.perform(
+                post("/students/batch")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)),
+            )
+                .andExpect(status().isAccepted)
+
+            verify(studentBatchProducer).sendToQueue(request.students)
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when batch request is invalid")
+        fun shouldReturn400WhenBatchRequestIsInvalid() {
+            val invalidRequest = CreateStudentBatchRequest(students = emptyList())
+
+            mockMvc.perform(
+                post("/students/batch")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(invalidRequest)),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.fields").isArray)
         }
     }
 }

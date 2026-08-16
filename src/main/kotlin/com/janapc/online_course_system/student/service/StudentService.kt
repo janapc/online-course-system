@@ -9,6 +9,7 @@ import com.janapc.online_course_system.student.exception.StudentNotFoundExceptio
 import com.janapc.online_course_system.student.mapper.StudentMapper
 import com.janapc.online_course_system.student.repository.StudentRepository
 import com.janapc.online_course_system.student.specification.StudentSpecification
+import jakarta.transaction.Transactional
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.domain.Specification
@@ -75,6 +76,18 @@ class StudentService(
         return StudentMapper.toResponse(
             studentRepository.save(student),
         )
+    }
+
+    @Transactional
+    fun createAllInBatch(students: List<CreateStudentRequest>) {
+        val entities = students.map { dto ->
+            Student(
+                name = dto.name,
+                email = dto.email,
+                active = true,
+            )
+        }
+        studentRepository.saveAll(entities)
     }
 
 }

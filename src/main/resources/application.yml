@@ -9,6 +9,14 @@ spring:
     jpa:
         hibernate:
             ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    rabbitmq:
+        host: ${SPRING_RABBITMQ_HOST:localhost}
+        port: ${SPRING_RABBITMQ_PORT:5672}
+        username: ${SPRING_RABBITMQ_USERNAME:guest}
+        password: ${SPRING_RABBITMQ_PASSWORD:guest}
+        listener:
+            simple:
+                consumer-batch-enabled: true
 jwt:
     secret: ${JWT_SECRET:363aaf3fa83493353483cab70d0e9af39b4da0cfa12620b742d8a3c315792a73 }
     expiration: 86400000 # 24h
