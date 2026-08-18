@@ -1,9 +1,11 @@
 package com.janapc.online_course_system.course.service
 
+import com.janapc.online_course_system.course.dto.CreateCourseBatchRequest
 import com.janapc.online_course_system.course.dto.CreateCourseRequest
 import com.janapc.online_course_system.course.dto.UpdateCourseRequest
 import com.janapc.online_course_system.course.entity.Course
 import com.janapc.online_course_system.course.exception.CourseNotFoundException
+import com.janapc.online_course_system.course.queue.CourseBatchProducer
 import com.janapc.online_course_system.course.repository.CourseRepository
 import java.util.*
 import kotlin.test.assertEquals
@@ -24,6 +26,9 @@ import org.springframework.data.jpa.domain.Specification
 class CourseServiceTest {
     @Mock
     lateinit var courseRepository: CourseRepository
+
+    @Mock
+    lateinit var courseBatchProducer: CourseBatchProducer
 
     @InjectMocks
     lateinit var courseService: CourseService
@@ -162,5 +167,45 @@ class CourseServiceTest {
         }
         verify(courseRepository).findById(1L)
         verify(courseRepository, never()).delete(any<Course>())
+    }
+
+    @Test
+    fun `should send course message to queue`() {
+        val request = CreateCourseBatchRequest(
+            listOf(
+                CreateCourseRequest(
+                    name = "Course A",
+                    description = "This is a description A",
+                ),
+                CreateCourseRequest(
+                    name = "Course B",
+                    description = "This is a description B",
+                ),
+            ),
+        )
+        doNothing().whenever(courseBatchProducer).sendToQueue(request.courses)
+        courseService.sendCoursesToQueue(request)
+        verify(courseBatchProducer).sendToQueue(any())
+    }
+
+    @Test
+    fun `should create all batch courses`() {
+        val courses = listOf(
+            Course(id = 1L, name = "Course A", description = "This is a description A", active = true),
+            Course(id = 2L, name = "Course B", description = "This is a description B", active = true),
+        )
+        val request = listOf(
+            CreateCourseRequest(
+                name = "Course A",
+                description = "This is a description A",
+            ),
+            CreateCourseRequest(
+                name = "Course B",
+                description = "This is a description B",
+            ),
+        )
+        whenever(courseRepository.saveAll(any<Iterable<Course>>())).thenReturn(courses)
+        courseService.createAllBatchCourses(request)
+        verify(courseRepository).saveAll(any<Iterable<Course>>())
     }
 }

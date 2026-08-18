@@ -2,6 +2,7 @@ package com.janapc.online_course_system.course.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.janapc.online_course_system.course.dto.CourseResponse
+import com.janapc.online_course_system.course.dto.CreateCourseBatchRequest
 import com.janapc.online_course_system.course.dto.CreateCourseRequest
 import com.janapc.online_course_system.course.dto.UpdateCourseRequest
 import com.janapc.online_course_system.course.exception.CourseNotFoundException
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doNothing
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
@@ -236,6 +238,47 @@ class CourseControllerTest {
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$[0].id").value(10))
                 .andExpect(jsonPath("$[0].name").value("Test"))
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /courses/batch")
+    inner class CreateBatchTests {
+
+        @Test
+        @DisplayName("Should return 202 Accepted when batch request is valid")
+        fun shouldCreateBatchSuccessfully() {
+            val request = CreateCourseBatchRequest(
+                courses = listOf(
+                    CreateCourseRequest(name = "Course A", description = "This is a description A"),
+                    CreateCourseRequest(name = "Course B", description = "This is a description B"),
+                ),
+            )
+
+            doNothing().whenever(courseService).sendCoursesToQueue(request)
+
+            mockMvc.perform(
+                post("/courses/batch")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)),
+            )
+                .andExpect(status().isAccepted)
+
+            verify(courseService).sendCoursesToQueue(request)
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when batch request is invalid")
+        fun shouldReturn400WhenBatchRequestIsInvalid() {
+            val invalidRequest = CreateCourseBatchRequest(courses = emptyList())
+
+            mockMvc.perform(
+                post("/courses/batch")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(invalidRequest)),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.fields").isArray)
         }
     }
 }

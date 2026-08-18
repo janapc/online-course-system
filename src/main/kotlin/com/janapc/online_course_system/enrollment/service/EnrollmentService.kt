@@ -18,9 +18,12 @@ import com.janapc.online_course_system.student.exception.StudentNotFoundExceptio
 import com.janapc.online_course_system.student.mapper.StudentMapper
 import com.janapc.online_course_system.student.repository.StudentRepository
 import java.time.LocalDateTime
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class EnrollmentService(
@@ -28,16 +31,20 @@ class EnrollmentService(
     private val studentRepository: StudentRepository,
     private val courseRepository: CourseRepository,
 ) {
+
     fun findAll(pageable: Pageable): Page<EnrollmentDetailsResponse> {
         return enrollmentRepository.findAll(pageable)
             .map { enrollment -> EnrollmentMapper.toDetailsResponse(enrollment) }
     }
 
+    @Cacheable(value = ["enrollments"], key = "#id")
     fun findById(id: Long): EnrollmentDetailsResponse {
         val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
         return EnrollmentMapper.toDetailsResponse(enrollment)
     }
 
+    @Transactional
+    @CacheEvict(value = ["enrollments"], allEntries = true)
     fun create(request: CreateEnrollmentRequest): EnrollmentResponse {
         val enrollment =
             enrollmentRepository.findByStudentIdAndCourseId(
@@ -93,6 +100,8 @@ class EnrollmentService(
         }
     }
 
+    @Transactional
+    @CacheEvict(value = ["enrollments"], allEntries = true)
     fun cancel(id: Long): EnrollmentResponse {
         val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
         if (!enrollment.active) {

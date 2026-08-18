@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration
 class RabbitMQConfig {
     companion object {
         const val STUDENT_BATCH_QUEUE = "student.creation.batch.queue"
+        const val COURSE_BATCH_QUEUE = "course.creation.batch.queue"
     }
 
     /**
@@ -19,6 +20,11 @@ class RabbitMQConfig {
     @Bean
     fun studentBatchQueue(): Queue {
         return Queue(STUDENT_BATCH_QUEUE, true)
+    }
+
+    @Bean
+    fun courseBatchQueue(): Queue {
+        return Queue(COURSE_BATCH_QUEUE, true)
     }
 
     /**

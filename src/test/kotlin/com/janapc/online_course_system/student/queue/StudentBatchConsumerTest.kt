@@ -20,13 +20,13 @@ class StudentBatchConsumerTest {
     private lateinit var studentBatchConsumer: StudentBatchConsumer
 
     @Test
-    @DisplayName("Should call studentService createAllInBatch when batch is received from queue")
+    @DisplayName("Should call studentService createAllBatchStudents when batch is received from queue")
     fun shouldProcessStudentBatchSuccessfully() {
         val students = listOf(
             CreateStudentRequest(name = "Student 1", email = "student1@email.com"),
             CreateStudentRequest(name = "Student 2", email = "student2@email.com"),
         )
         studentBatchConsumer.processBatch(students)
-        verify(studentService).createAllInBatch(students)
+        verify(studentService).createAllBatchStudents(students)
     }
 }

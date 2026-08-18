@@ -20,7 +20,7 @@ class StudentBatchConsumer(
     fun processBatch(students: List<CreateStudentRequest>) {
         logger.info("Received a batch of {} student messages from RabbitMQ", students.size)
         try {
-            studentService.createAllInBatch(students)
+            studentService.createAllBatchStudents(students)
             logger.info("Successfully processed and saved batch of {} students to the database", students.size)
         } catch (ex: Exception) {
             logger.error("Failed to process student creation batch: {}", ex.message, ex)

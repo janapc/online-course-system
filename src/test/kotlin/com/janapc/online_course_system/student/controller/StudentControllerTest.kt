@@ -10,7 +10,6 @@ import com.janapc.online_course_system.student.dto.CreateStudentRequest
 import com.janapc.online_course_system.student.dto.StudentResponse
 import com.janapc.online_course_system.student.dto.UpdateStudentRequest
 import com.janapc.online_course_system.student.exception.StudentNotFoundException
-import com.janapc.online_course_system.student.queue.StudentBatchProducer
 import com.janapc.online_course_system.student.service.StudentService
 import java.time.LocalDateTime
 import org.junit.jupiter.api.DisplayName
@@ -56,9 +55,6 @@ class StudentControllerTest {
 
     @MockitoBean
     private lateinit var enrollmentService: EnrollmentService
-
-    @MockitoBean
-    private lateinit var studentBatchProducer: StudentBatchProducer
 
     private val now = LocalDateTime.now()
 
@@ -265,7 +261,7 @@ class StudentControllerTest {
             val student2 = CreateStudentRequest(name = "Test Two", email = "two@test.com")
             val request = CreateStudentBatchRequest(students = listOf(student1, student2))
 
-            doNothing().whenever(studentBatchProducer).sendToQueue(request.students)
+            doNothing().whenever(studentService).sendStudentsToQueue(request)
 
             mockMvc.perform(
                 post("/students/batch")
@@ -274,7 +270,7 @@ class StudentControllerTest {
             )
                 .andExpect(status().isAccepted)
 
-            verify(studentBatchProducer).sendToQueue(request.students)
+            verify(studentService).sendStudentsToQueue(request)
         }
 
         @Test

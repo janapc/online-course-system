@@ -1,10 +1,12 @@
 package com.janapc.online_course_system.student.service
 
+import com.janapc.online_course_system.student.dto.CreateStudentBatchRequest
 import com.janapc.online_course_system.student.dto.CreateStudentRequest
 import com.janapc.online_course_system.student.dto.UpdateStudentRequest
 import com.janapc.online_course_system.student.entity.Student
 import com.janapc.online_course_system.student.exception.StudentAlreadyExistsException
 import com.janapc.online_course_system.student.exception.StudentNotFoundException
+import com.janapc.online_course_system.student.queue.StudentBatchProducer
 import com.janapc.online_course_system.student.repository.StudentRepository
 import java.util.*
 import kotlin.test.assertEquals
@@ -25,6 +27,9 @@ import org.springframework.data.jpa.domain.Specification
 class StudentServiceTest {
     @Mock
     lateinit var studentRepository: StudentRepository
+
+    @Mock
+    lateinit var studentBatchProducer: StudentBatchProducer
 
     @InjectMocks
     lateinit var studentService: StudentService
@@ -255,9 +260,9 @@ class StudentServiceTest {
     }
 
     @Nested
-    inner class CreateAllInBatch {
+    inner class CreateAllBatchStudents {
         @Test
-        @DisplayName("Shoul create all students")
+        @DisplayName("Should create all students")
         fun shouldCreateAllStudents() {
             val students = listOf(
                 Student(
@@ -284,8 +289,31 @@ class StudentServiceTest {
                 ),
             )
             whenever(studentRepository.saveAll(any<Iterable<Student>>())).thenReturn(students)
-            studentService.createAllInBatch(request)
+            studentService.createAllBatchStudents(request)
             verify(studentRepository).saveAll(any<Iterable<Student>>())
+        }
+    }
+
+    @Nested
+    inner class SendStudentsToQueue {
+        @Test
+        @DisplayName("Should send students to queue")
+        fun shouldSendStudentsToQueue() {
+            val request = CreateStudentBatchRequest(
+                listOf(
+                    CreateStudentRequest(
+                        name = "Student 1",
+                        email = "student1@email.com",
+                    ),
+                    CreateStudentRequest(
+                        name = "Student 2",
+                        email = "student2@email.com",
+                    ),
+                ),
+            )
+            doNothing().whenever(studentBatchProducer).sendToQueue(any())
+            studentService.sendStudentsToQueue(request)
+            verify(studentBatchProducer).sendToQueue(any())
         }
     }
 }

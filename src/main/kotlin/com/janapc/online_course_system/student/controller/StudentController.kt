@@ -6,7 +6,6 @@ import com.janapc.online_course_system.student.dto.CreateStudentBatchRequest
 import com.janapc.online_course_system.student.dto.CreateStudentRequest
 import com.janapc.online_course_system.student.dto.StudentResponse
 import com.janapc.online_course_system.student.dto.UpdateStudentRequest
-import com.janapc.online_course_system.student.queue.StudentBatchProducer
 import com.janapc.online_course_system.student.service.StudentService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.*
 class StudentController(
     private val studentService: StudentService,
     private val enrollmentService: EnrollmentService,
-    private val studentBatchProducer: StudentBatchProducer,
 ) {
 
     @Operation(summary = "List all students with optional filters")
@@ -88,6 +86,6 @@ class StudentController(
     fun createBatch(
         @Valid @RequestBody requests: CreateStudentBatchRequest,
     ) {
-        studentBatchProducer.sendToQueue(requests.students)
+        studentService.sendStudentsToQueue(requests)
     }
 }

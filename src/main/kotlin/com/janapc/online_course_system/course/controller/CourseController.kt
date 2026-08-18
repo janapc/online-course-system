@@ -1,6 +1,7 @@
 package com.janapc.online_course_system.course.controller
 
 import com.janapc.online_course_system.course.dto.CourseResponse
+import com.janapc.online_course_system.course.dto.CreateCourseBatchRequest
 import com.janapc.online_course_system.course.dto.CreateCourseRequest
 import com.janapc.online_course_system.course.dto.UpdateCourseRequest
 import com.janapc.online_course_system.course.service.CourseService
@@ -66,5 +67,15 @@ class CourseController(
     @GetMapping("/{id}/students")
     fun findStudents(@PathVariable id: Long): List<StudentSummaryResponse> {
         return enrollmentService.findStudentsByCourse(id)
+    }
+
+    @Operation(summary = "Enqueue a batch of courses for creation (ADMIN only)")
+    @PostMapping("/batch")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasRole('ADMIN')")
+    fun createBatch(
+        @Valid @RequestBody request: CreateCourseBatchRequest,
+    ) {
+        courseService.sendCoursesToQueue(request)
     }
 }
