@@ -1,7 +1,7 @@
 services:
     postgres:
         image: postgres:17
-        container_name: online-course-system-db
+        container_name: db
         environment:
             POSTGRES_DB: ${POSTGRES_DB}
             POSTGRES_USER: ${POSTGRES_USER}
@@ -21,7 +21,7 @@ services:
 
     rabbitmq:
         image: rabbitmq:3.13-management
-        container_name: online-course-system-rabbitmq
+        container_name: rabbitmq
         ports:
             - "5672:5672"
             - "15672:15672"
@@ -36,7 +36,7 @@ services:
 
     redis:
         image: redis:7-alpine
-        container_name: online-course-system-redis
+        container_name: redis
         ports:
             - "6379:6379"
         volumes:
@@ -47,7 +47,7 @@ services:
 
     api:
         build: .
-        container_name: online-course-system-api
+        container_name: api
         ports:
             - "8080:8080"
         environment:
@@ -60,6 +60,15 @@ services:
             - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
             - SPRING_DATA_REDIS_HOST=${REDIS_HOST}
             - SPRING_DATA_REDIS_PORT=${REDIS_PORT}
+            - OTEL_SERVICE_NAME=${SPRING_APPLICATION_NAME}
+            - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER}
+            - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER}
+            - OTEL_LOGS_EXPORTER=${OTEL_LOGS_EXPORTER}
+            - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+            - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+            - OTEL_METRIC_EXPORT_INTERVAL=${OTEL_METRIC_EXPORT_INTERVAL}
+            - OTEL_INSTRUMENTATION_MICROMETER_ENABLED=${OTEL_INSTRUMENTATION_MICROMETER_ENABLED}
+            - SPRING_APPLICATION_NAME=${SPRING_APPLICATION_NAME}
         depends_on:
             postgres:
                 condition: service_healthy
@@ -67,6 +76,55 @@ services:
                 condition: service_started
             redis:
                 condition: service_started
+            otel-collector:
+                condition: service_started
+        networks:
+            - app-network
+
+    otel-collector:
+        image: otel/opentelemetry-collector-contrib:latest
+        container_name: otel-collector
+        command: [ "--config=/etc/otel-collector-config.yml" ]
+        volumes:
+            - ./observability/otel-collector-config.yml:/etc/otel-collector-config.yml
+        ports:
+            - "4317:4317"
+            - "4318:4318"
+            - "8889:8889"
+        networks:
+            - app-network
+
+    prometheus:
+        image: prom/prometheus:latest
+        container_name: prometheus
+        volumes:
+            - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+            - prometheus_data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--web.enable-lifecycle'
+        ports:
+            - "9090:9090"
+        depends_on:
+            - otel-collector
+        networks:
+            - app-network
+
+    grafana:
+        image: grafana/grafana:latest
+        container_name: grafana
+        ports:
+            - "3000:3000"
+        environment:
+            GF_SECURITY_ADMIN_USER: admin
+            GF_SECURITY_ADMIN_PASSWORD: admin
+            GF_USERS_ALLOW_SIGN_UP: "false"
+        volumes:
+            - grafana_data:/var/lib/grafana
+            - ./observability/grafana-provisioning:/etc/grafana/provisioning
+        depends_on:
+            - prometheus
         networks:
             - app-network
 
@@ -74,6 +132,8 @@ volumes:
     postgres_data:
     redis_data:
     rabbitmq_data:
+    prometheus_data:
+    grafana_data:
 
 networks:
     app-network:
