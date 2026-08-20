@@ -8,20 +8,20 @@ import org.springframework.stereotype.Component
 
 @Component
 class StudentBatchProducer(
-    private val rabbitTemplate: RabbitTemplate,
+	private val rabbitTemplate: RabbitTemplate,
 ) {
-    private val logger = LoggerFactory.getLogger(StudentBatchProducer::class.java)
+	private val logger = LoggerFactory.getLogger(StudentBatchProducer::class.java)
 
-    fun sendToQueue(students: List<CreateStudentRequest>) {
-        logger.info("Enqueueing a batch of {} student creation requests", students.size)
-        students.forEach { student ->
-            logger.debug("Publishing student creation message for email: {}", student.email)
-            rabbitTemplate.convertAndSend(RabbitMQConfig.STUDENT_BATCH_QUEUE, student)
-        }
-        logger.info(
-            "Successfully published {} student messages to queue '{}'",
-            students.size,
-            RabbitMQConfig.STUDENT_BATCH_QUEUE,
-        )
-    }
+	fun sendToQueue(students: List<CreateStudentRequest>) {
+		logger.info("Enqueueing a batch of {} student creation requests", students.size)
+		students.forEach { student ->
+			logger.debug("Publishing student creation message for email: {}", student.email)
+			rabbitTemplate.convertAndSend(RabbitMQConfig.STUDENT_BATCH_QUEUE, student)
+		}
+		logger.info(
+			"Successfully published {} student messages to queue '{}'",
+			students.size,
+			RabbitMQConfig.STUDENT_BATCH_QUEUE,
+		)
+	}
 }

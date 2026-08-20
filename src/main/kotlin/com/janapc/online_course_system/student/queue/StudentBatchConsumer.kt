@@ -9,22 +9,22 @@ import org.springframework.stereotype.Component
 
 @Component
 class StudentBatchConsumer(
-    private val studentService: StudentService,
+	private val studentService: StudentService,
 ) {
-    private val logger = LoggerFactory.getLogger(StudentBatchConsumer::class.java)
+	private val logger = LoggerFactory.getLogger(StudentBatchConsumer::class.java)
 
-    @RabbitListener(
-        queues = [RabbitMQConfig.STUDENT_BATCH_QUEUE],
-        containerFactory = "batchContainerFactory",
-    )
-    fun processBatch(students: List<CreateStudentRequest>) {
-        logger.info("Received a batch of {} student messages from RabbitMQ", students.size)
-        try {
-            studentService.createAllBatchStudents(students)
-            logger.info("Successfully processed and saved batch of {} students to the database", students.size)
-        } catch (ex: Exception) {
-            logger.error("Failed to process student creation batch: {}", ex.message, ex)
-            throw ex
-        }
-    }
+	@RabbitListener(
+		queues = [RabbitMQConfig.STUDENT_BATCH_QUEUE],
+		containerFactory = "batchContainerFactory",
+	)
+	fun processBatch(students: List<CreateStudentRequest>) {
+		logger.info("Received a batch of {} student messages from RabbitMQ", students.size)
+		try {
+			studentService.createAllBatchStudents(students)
+			logger.info("Successfully processed and saved batch of {} students to the database", students.size)
+		} catch (ex: Exception) {
+			logger.error("Failed to process student creation batch: {}", ex.message, ex)
+			throw ex
+		}
+	}
 }

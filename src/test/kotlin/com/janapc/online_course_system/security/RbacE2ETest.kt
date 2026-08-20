@@ -26,124 +26,125 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class RbacE2ETest {
+	@Autowired
+	private lateinit var mockMvc: MockMvc
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+	@Autowired
+	private lateinit var objectMapper: ObjectMapper
 
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+	private fun MockHttpServletRequestBuilder.bearer(token: String): MockHttpServletRequestBuilder =
+		this.header(HttpHeaders.AUTHORIZATION, "Bearer $token")
 
-    private fun MockHttpServletRequestBuilder.bearer(token: String): MockHttpServletRequestBuilder =
-        this.header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+	private fun MockHttpServletRequestBuilder.json(body: Any): MockHttpServletRequestBuilder =
+		this.contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))
 
-    private fun MockHttpServletRequestBuilder.json(body: Any): MockHttpServletRequestBuilder =
-        this.contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))
+	private fun obtainAccessToken(
+		email: String,
+		password: String = "password123",
+		role: Role = Role.USER,
+	): String {
+		val registerRequest = RegisterRequest(email = email, password = password, role = role)
+		mockMvc.perform(post("/auth/register").json(registerRequest))
 
-    private fun obtainAccessToken(
-        email: String,
-        password: String = "password123",
-        role: Role = Role.USER,
-    ): String {
-        val registerRequest = RegisterRequest(email = email, password = password, role = role)
-        mockMvc.perform(post("/auth/register").json(registerRequest))
+		val loginResult =
+			mockMvc
+				.perform(
+					post("/auth/login").json(LoginRequest(email = email, password = password)),
+				).andExpect(status().isOk)
+				.andReturn()
 
-        val loginResult = mockMvc.perform(
-            post("/auth/login").json(LoginRequest(email = email, password = password)),
-        ).andExpect(status().isOk).andReturn()
+		val response =
+			objectMapper.readValue(
+				loginResult.response.contentAsString,
+				AuthResponse::class.java,
+			)
+		return response.token
+	}
 
-        val response = objectMapper.readValue(
-            loginResult.response.contentAsString,
-            AuthResponse::class.java,
-        )
-        return response.token
-    }
+	@Nested
+	@DisplayName("ROLE_USER Access Restrictions (403 Forbidden)")
+	inner class RoleUserRestrictionTests {
+		@Test
+		@DisplayName("Should return 403 Forbidden when ROLE_USER attempts to create a student")
+		fun shouldReturn403WhenUserTriesToCreateStudent() {
+			val userToken = obtainAccessToken(email = "regular_user_create@test.com", role = Role.USER)
+			val request = CreateStudentRequest(name = "Forbidden Student", email = "forbidden_student@test.com")
 
-    @Nested
-    @DisplayName("ROLE_USER Access Restrictions (403 Forbidden)")
-    inner class RoleUserRestrictionTests {
+			mockMvc
+				.perform(
+					post("/students")
+						.bearer(userToken)
+						.json(request),
+				).andExpect(status().isForbidden)
+		}
 
-        @Test
-        @DisplayName("Should return 403 Forbidden when ROLE_USER attempts to create a student")
-        fun shouldReturn403WhenUserTriesToCreateStudent() {
-            val userToken = obtainAccessToken(email = "regular_user_create@test.com", role = Role.USER)
-            val request = CreateStudentRequest(name = "Forbidden Student", email = "forbidden_student@test.com")
+		@Test
+		@DisplayName("Should return 403 Forbidden when ROLE_USER attempts to update a student")
+		fun shouldReturn403WhenUserTriesToUpdateStudent() {
+			val userToken = obtainAccessToken(email = "regular_user_update@test.com", role = Role.USER)
+			val request =
+				UpdateStudentRequest(name = "Updated Name", email = "regular_user_update@test.com", active = true)
 
-            mockMvc.perform(
-                post("/students")
-                    .bearer(userToken)
-                    .json(request),
-            )
-                .andExpect(status().isForbidden)
-        }
+			mockMvc
+				.perform(
+					put("/students/1")
+						.bearer(userToken)
+						.json(request),
+				).andExpect(status().isForbidden)
+		}
 
-        @Test
-        @DisplayName("Should return 403 Forbidden when ROLE_USER attempts to update a student")
-        fun shouldReturn403WhenUserTriesToUpdateStudent() {
-            val userToken = obtainAccessToken(email = "regular_user_update@test.com", role = Role.USER)
-            val request =
-                UpdateStudentRequest(name = "Updated Name", email = "regular_user_update@test.com", active = true)
+		@Test
+		@DisplayName("Should return 403 Forbidden when ROLE_USER attempts to delete a student")
+		fun shouldReturn403WhenUserTriesToDeleteStudent() {
+			val userToken = obtainAccessToken(email = "regular_user_delete@test.com", role = Role.USER)
 
-            mockMvc.perform(
-                put("/students/1")
-                    .bearer(userToken)
-                    .json(request),
-            )
-                .andExpect(status().isForbidden)
-        }
+			mockMvc
+				.perform(
+					delete("/students/1").bearer(userToken),
+				).andExpect(status().isForbidden)
+		}
 
-        @Test
-        @DisplayName("Should return 403 Forbidden when ROLE_USER attempts to delete a student")
-        fun shouldReturn403WhenUserTriesToDeleteStudent() {
-            val userToken = obtainAccessToken(email = "regular_user_delete@test.com", role = Role.USER)
+		@Test
+		@DisplayName("Should return 403 Forbidden when ROLE_USER attempts to create a course")
+		fun shouldReturn403WhenUserTriesToCreateCourse() {
+			val userToken = obtainAccessToken(email = "regular_user_course@test.com", role = Role.USER)
+			val request = CreateCourseRequest(name = "Forbidden Course", description = "Course Description")
 
-            mockMvc.perform(
-                delete("/students/1").bearer(userToken),
-            )
-                .andExpect(status().isForbidden)
-        }
+			mockMvc
+				.perform(
+					post("/courses")
+						.bearer(userToken)
+						.json(request),
+				).andExpect(status().isForbidden)
+		}
 
-        @Test
-        @DisplayName("Should return 403 Forbidden when ROLE_USER attempts to create a course")
-        fun shouldReturn403WhenUserTriesToCreateCourse() {
-            val userToken = obtainAccessToken(email = "regular_user_course@test.com", role = Role.USER)
-            val request = CreateCourseRequest(name = "Forbidden Course", description = "Course Description")
+		@Test
+		@DisplayName("Should return 200 OK when ROLE_USER attempts to read students")
+		fun shouldAllowUserToReadStudents() {
+			val userToken = obtainAccessToken(email = "regular_user_read@test.com", role = Role.USER)
 
-            mockMvc.perform(
-                post("/courses")
-                    .bearer(userToken)
-                    .json(request),
-            )
-                .andExpect(status().isForbidden)
-        }
+			mockMvc
+				.perform(
+					get("/students").bearer(userToken),
+				).andExpect(status().isOk)
+		}
+	}
 
-        @Test
-        @DisplayName("Should return 200 OK when ROLE_USER attempts to read students")
-        fun shouldAllowUserToReadStudents() {
-            val userToken = obtainAccessToken(email = "regular_user_read@test.com", role = Role.USER)
+	@Nested
+	@DisplayName("ROLE_ADMIN Access Permissions (Allowed)")
+	inner class RoleAdminPermissionTests {
+		@Test
+		@DisplayName("Should return 201 Created when ROLE_ADMIN creates a student")
+		fun shouldAllowAdminToCreateStudent() {
+			val adminToken = obtainAccessToken(email = "admin_user_create@test.com", role = Role.ADMIN)
+			val request = CreateStudentRequest(name = "Allowed Student", email = "allowed_student@test.com")
 
-            mockMvc.perform(
-                get("/students").bearer(userToken),
-            )
-                .andExpect(status().isOk)
-        }
-    }
-
-    @Nested
-    @DisplayName("ROLE_ADMIN Access Permissions (Allowed)")
-    inner class RoleAdminPermissionTests {
-
-        @Test
-        @DisplayName("Should return 201 Created when ROLE_ADMIN creates a student")
-        fun shouldAllowAdminToCreateStudent() {
-            val adminToken = obtainAccessToken(email = "admin_user_create@test.com", role = Role.ADMIN)
-            val request = CreateStudentRequest(name = "Allowed Student", email = "allowed_student@test.com")
-
-            mockMvc.perform(
-                post("/students")
-                    .bearer(adminToken)
-                    .json(request),
-            )
-                .andExpect(status().isCreated)
-        }
-    }
+			mockMvc
+				.perform(
+					post("/students")
+						.bearer(adminToken)
+						.json(request),
+				).andExpect(status().isCreated)
+		}
+	}
 }

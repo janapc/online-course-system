@@ -20,70 +20,79 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CourseService(
-    private val courseRepository: CourseRepository,
-    private val courseBatchProducer: CourseBatchProducer,
+	private val courseRepository: CourseRepository,
+	private val courseBatchProducer: CourseBatchProducer,
 ) {
-    @Transactional
-    @CacheEvict(value = ["courses"], allEntries = true)
-    fun create(request: CreateCourseRequest): CourseResponse {
-        val course = Course(name = request.name, description = request.description)
-        return CourseMapper.toResponse(
-            courseRepository.save(course),
-        )
-    }
+	@Transactional
+	@CacheEvict(value = ["courses"], allEntries = true)
+	fun create(request: CreateCourseRequest): CourseResponse {
+		val course = Course(name = request.name, description = request.description)
+		return CourseMapper.toResponse(
+			courseRepository.save(course),
+		)
+	}
 
-    fun findAll(name: String?, active: Boolean?, pageable: Pageable): Page<CourseResponse> {
-        var specification: Specification<Course> = Specification.allOf();
-        if (!name.isNullOrBlank()) {
-            specification = specification.and(CourseSpecification.hasName(name))
-        }
+	fun findAll(
+		name: String?,
+		active: Boolean?,
+		pageable: Pageable,
+	): Page<CourseResponse> {
+		var specification: Specification<Course> = Specification.allOf()
+		if (!name.isNullOrBlank()) {
+			specification = specification.and(CourseSpecification.hasName(name))
+		}
 
-        if (active != null) {
-            specification = specification.and(CourseSpecification.hasActive(active))
-        }
+		if (active != null) {
+			specification = specification.and(CourseSpecification.hasActive(active))
+		}
 
-        return courseRepository.findAll(specification, pageable).map { CourseMapper.toResponse(it) }
-    }
+		return courseRepository.findAll(specification, pageable).map { CourseMapper.toResponse(it) }
+	}
 
-    @Cacheable(value = ["courses"], key = "#id")
-    fun findById(id: Long): CourseResponse {
-        val course = courseRepository.findById(id).orElseThrow {
-            CourseNotFoundException(id)
-        }
-        return CourseMapper.toResponse(course)
-    }
+	@Cacheable(value = ["courses"], key = "#id")
+	fun findById(id: Long): CourseResponse {
+		val course =
+			courseRepository.findById(id).orElseThrow {
+				CourseNotFoundException(id)
+			}
+		return CourseMapper.toResponse(course)
+	}
 
-    @Transactional
-    @CacheEvict(cacheNames = ["courses"], key = "#id")
-    fun update(id: Long, request: UpdateCourseRequest): CourseResponse {
-        val course = courseRepository.findById(id).orElseThrow { CourseNotFoundException(id) }
-        course.name = request.name
-        course.description = request.description
-        course.active = request.active
-        return CourseMapper.toResponse(
-            courseRepository.save(course),
-        )
-    }
+	@Transactional
+	@CacheEvict(cacheNames = ["courses"], key = "#id")
+	fun update(
+		id: Long,
+		request: UpdateCourseRequest,
+	): CourseResponse {
+		val course = courseRepository.findById(id).orElseThrow { CourseNotFoundException(id) }
+		course.name = request.name
+		course.description = request.description
+		course.active = request.active
+		return CourseMapper.toResponse(
+			courseRepository.save(course),
+		)
+	}
 
-    @Transactional
-    @CacheEvict(cacheNames = ["courses"], key = "#id")
-    fun delete(id: Long) {
-        val course = courseRepository.findById(id).orElseThrow { CourseNotFoundException(id) }
-        courseRepository.delete(course)
-    }
+	@Transactional
+	@CacheEvict(cacheNames = ["courses"], key = "#id")
+	fun delete(id: Long) {
+		val course = courseRepository.findById(id).orElseThrow { CourseNotFoundException(id) }
+		courseRepository.delete(course)
+	}
 
-    @Transactional
-    fun createAllBatchCourses(courses: List<CreateCourseRequest>) {
-        val entities = courses.map { dto ->
-            Course(
-                name = dto.name,
-                description = dto.description,
-            )
-        }
-        courseRepository.saveAll(entities)
-    }
+	@Transactional
+	fun createAllBatchCourses(courses: List<CreateCourseRequest>) {
+		val entities =
+			courses.map { dto ->
+				Course(
+					name = dto.name,
+					description = dto.description,
+				)
+			}
+		courseRepository.saveAll(entities)
+	}
 
-    fun sendCoursesToQueue(request: CreateCourseBatchRequest) {
-        courseBatchProducer.sendToQueue(courses = request.courses)
-    }
+	fun sendCoursesToQueue(request: CreateCourseBatchRequest) {
+		courseBatchProducer.sendToQueue(courses = request.courses)
+	}
 }

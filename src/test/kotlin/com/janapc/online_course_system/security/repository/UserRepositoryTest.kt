@@ -16,30 +16,30 @@ import org.springframework.test.context.ActiveProfiles
 @DataJpaTest
 @ActiveProfiles("test")
 class UserRepositoryTest {
-    @Autowired
-    private lateinit var userRepository: UserRepository
+	@Autowired
+	private lateinit var userRepository: UserRepository
 
-    @Autowired
-    private lateinit var entityManager: TestEntityManager
+	@Autowired
+	private lateinit var entityManager: TestEntityManager
 
-    @Nested
-    @DisplayName("Test Find By Email")
-    inner class FindByEmail {
-        @Test
-        @DisplayName("Should return user when email exists")
-        fun shouldReturnUserWhenEmailExists() {
-            val user = User(email = "john@test.com", password = "password", role = Role.USER)
-            entityManager.persist(user)
-            val result = userRepository.findByEmail(user.email)
-            assertNotNull(result)
-            assertEquals("john@test.com", result?.email)
-        }
+	@Nested
+	@DisplayName("Test Find By Email")
+	inner class FindByEmail {
+		@Test
+		@DisplayName("Should return user when email exists")
+		fun shouldReturnUserWhenEmailExists() {
+			val user = User(email = "john@test.com", password = "password", role = Role.USER)
+			entityManager.persist(user)
+			val result = userRepository.findByEmail(user.email)
+			assertNotNull(result)
+			assertEquals("john@test.com", result?.email)
+		}
 
-        @Test
-        @DisplayName("Should return empty when email not exists")
-        fun shouldReturnEmptyWhenEmailNotExists() {
-            val result = userRepository.findByEmail("noexists@email.com")
-            assertNull(result)
-        }
-    }
+		@Test
+		@DisplayName("Should return empty when email not exists")
+		fun shouldReturnEmptyWhenEmailNotExists() {
+			val result = userRepository.findByEmail("noexists@email.com")
+			assertNull(result)
+		}
+	}
 }

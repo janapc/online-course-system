@@ -14,59 +14,56 @@ import org.springframework.test.context.ActiveProfiles
 @DataJpaTest
 @ActiveProfiles("test")
 class StudentRepositoryTest {
-    @Autowired
-    private lateinit var studentRepository: StudentRepository
+	@Autowired
+	private lateinit var studentRepository: StudentRepository
 
-    @Autowired
-    private lateinit var entityManager: TestEntityManager
+	@Autowired
+	private lateinit var entityManager: TestEntityManager
 
-    @Nested
-    @DisplayName("Email Queries")
-    inner class EmailQueries {
-        @Test
-        @DisplayName("Should return true when email exists in database")
-        fun shouldReturnTrueWhenEmailExists() {
-            val student = Student(name = "John", email = "john@test.com", active = true)
-            entityManager.persist(student)
-            val result = studentRepository.existsByEmail(student.email)
-            assertTrue(result)
-        }
+	@Nested
+	@DisplayName("Email Queries")
+	inner class EmailQueries {
+		@Test
+		@DisplayName("Should return true when email exists in database")
+		fun shouldReturnTrueWhenEmailExists() {
+			val student = Student(name = "John", email = "john@test.com", active = true)
+			entityManager.persist(student)
+			val result = studentRepository.existsByEmail(student.email)
+			assertTrue(result)
+		}
 
-        @Test
-        @DisplayName("Should return false when email does not exist in database")
-        fun shouldReturnFalseWhenEmailDoesNotExist() {
-            val result = studentRepository.existsByEmail("nonexistent@test.com")
-            assertFalse(result)
-        }
+		@Test
+		@DisplayName("Should return false when email does not exist in database")
+		fun shouldReturnFalseWhenEmailDoesNotExist() {
+			val result = studentRepository.existsByEmail("nonexistent@test.com")
+			assertFalse(result)
+		}
 
-        @Test
-        @DisplayName("Should find student by email")
-        fun shouldFindStudentByEmail() {
-            val student = Student(name = "John", email = "john@test.com", active = true)
-            entityManager.persist(student)
-            val result = studentRepository.findByEmail(student.email)
-            assertNotNull(result)
-            assertEquals("John", result?.name)
-            assertEquals("john@test.com", result?.email)
-        }
-    }
+		@Test
+		@DisplayName("Should find student by email")
+		fun shouldFindStudentByEmail() {
+			val student = Student(name = "John", email = "john@test.com", active = true)
+			entityManager.persist(student)
+			val result = studentRepository.findByEmail(student.email)
+			assertNotNull(result)
+			assertEquals("John", result?.name)
+			assertEquals("john@test.com", result?.email)
+		}
+	}
 
-    @Nested
-    @DisplayName("Database Constraints")
-    inner class ConstraintTests {
+	@Nested
+	@DisplayName("Database Constraints")
+	inner class ConstraintTests {
+		@Test
+		@DisplayName("Should throw DataIntegrityViolationException when inserting duplicate email")
+		fun shouldThrowExceptionOnDuplicateEmail() {
+			val student1 = Student(name = "Maria", email = "unique@test.com", active = true)
+			val student2 = Student(name = "João", email = "unique@test.com", active = true)
 
-        @Test
-        @DisplayName("Should throw DataIntegrityViolationException when inserting duplicate email")
-        fun shouldThrowExceptionOnDuplicateEmail() {
-            val student1 = Student(name = "Maria", email = "unique@test.com", active = true)
-            val student2 = Student(name = "João", email = "unique@test.com", active = true)
-
-            studentRepository.saveAndFlush(student1)
-            assertThrows(DataIntegrityViolationException::class.java) {
-                studentRepository.saveAndFlush(student2)
-            }
-        }
-    }
-
-
+			studentRepository.saveAndFlush(student1)
+			assertThrows(DataIntegrityViolationException::class.java) {
+				studentRepository.saveAndFlush(student2)
+			}
+		}
+	}
 }

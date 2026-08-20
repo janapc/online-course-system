@@ -14,19 +14,18 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/auth")
 class AuthController(
-    private val authService: AuthService,
+	private val authService: AuthService,
 ) {
-    @Operation(summary = "Authenticate user and return JWT token")
-    @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): AuthResponse {
-        return authService.login(request)
-    }
+	@Operation(summary = "Authenticate user and return JWT token")
+	@PostMapping("/login")
+	fun login(
+		@Valid @RequestBody request: LoginRequest,
+	): AuthResponse = authService.login(request)
 
-    @Operation(summary = "Register a new user account")
-    @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun register(@Valid @RequestBody request: RegisterRequest): AuthResponse {
-        return authService.register(request)
-    }
-
+	@Operation(summary = "Register a new user account")
+	@PostMapping("/register")
+	@ResponseStatus(HttpStatus.CREATED)
+	fun register(
+		@Valid @RequestBody request: RegisterRequest,
+	): AuthResponse = authService.register(request)
 }

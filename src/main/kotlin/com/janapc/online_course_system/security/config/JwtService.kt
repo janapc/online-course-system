@@ -8,23 +8,31 @@ import org.springframework.stereotype.Component
 
 @Component
 class JwtService(
-    @Value("\${jwt.secret}")
-    private val secretKey: String,
-    @Value("\${jwt.expiration}")
-    private val expiration: Long,
+	@Value("\${jwt.secret}")
+	private val secretKey: String,
+	@Value("\${jwt.expiration}")
+	private val expiration: Long,
 ) {
-    private val key by lazy {
-        Keys.hmacShaKeyFor(secretKey.toByteArray())
-    }
+	private val key by lazy {
+		Keys.hmacShaKeyFor(secretKey.toByteArray())
+	}
 
-    fun generateToken(username: String): String = Jwts.builder()
-        .subject(username)
-        .issuedAt(Date())
-        .expiration(Date(System.currentTimeMillis() + expiration)) //24h
-        .signWith(key)
-        .compact()
+	fun generateToken(username: String): String =
+		Jwts
+			.builder()
+			.subject(username)
+			.issuedAt(Date())
+			.expiration(Date(System.currentTimeMillis() + expiration)) // 24h
+			.signWith(key)
+			.compact()
 
-    fun extractUsername(token: String): String? = runCatching {
-        Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload.subject
-    }.getOrNull()
+	fun extractUsername(token: String): String? =
+		runCatching {
+			Jwts
+				.parser()
+				.verifyWith(key)
+				.build()
+				.parseSignedClaims(token)
+				.payload.subject
+		}.getOrNull()
 }

@@ -14,31 +14,31 @@ import org.springframework.stereotype.Service
 
 @Service
 class AuthService(
-    private val authenticationManager: AuthenticationManager,
-    private val userRepository: UserRepository,
-    private val passwordEncoder: PasswordEncoder,
-    private val jwtService: JwtService,
+	private val authenticationManager: AuthenticationManager,
+	private val userRepository: UserRepository,
+	private val passwordEncoder: PasswordEncoder,
+	private val jwtService: JwtService,
 ) {
+	fun login(request: LoginRequest): AuthResponse {
+		authenticationManager.authenticate(
+			UsernamePasswordAuthenticationToken(request.email, request.password),
+		)
+		val token = jwtService.generateToken(request.email)
+		return AuthResponse(token = token)
+	}
 
-    fun login(request: LoginRequest): AuthResponse {
-        authenticationManager.authenticate(
-            UsernamePasswordAuthenticationToken(request.email, request.password),
-        )
-        val token = jwtService.generateToken(request.email)
-        return AuthResponse(token = token)
-    }
-
-    fun register(request: RegisterRequest): AuthResponse {
-        if (userRepository.findByEmail(request.email) != null) {
-            throw EmailAlreadyExistsException()
-        }
-        val user = User(
-            email = request.email,
-            password = passwordEncoder.encode(request.password),
-            role = request.role,
-        )
-        userRepository.save(user)
-        val token = jwtService.generateToken(request.email)
-        return AuthResponse(token = token)
-    }
+	fun register(request: RegisterRequest): AuthResponse {
+		if (userRepository.findByEmail(request.email) != null) {
+			throw EmailAlreadyExistsException()
+		}
+		val user =
+			User(
+				email = request.email,
+				password = passwordEncoder.encode(request.password),
+				role = request.role,
+			)
+		userRepository.save(user)
+		val token = jwtService.generateToken(request.email)
+		return AuthResponse(token = token)
+	}
 }

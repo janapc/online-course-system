@@ -12,29 +12,30 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate
 
 @ExtendWith(MockitoExtension::class)
 class StudentBatchProducerTest {
+	@Mock
+	private lateinit var rabbitTemplate: RabbitTemplate
 
-    @Mock
-    private lateinit var rabbitTemplate: RabbitTemplate
+	@InjectMocks
+	private lateinit var studentBatchProducer: StudentBatchProducer
 
-    @InjectMocks
-    private lateinit var studentBatchProducer: StudentBatchProducer
-
-    @Test
-    @DisplayName("Should send a student to the queue")
-    fun shouldSendAStudentToQueueSuccessfully() {
-        doNothing().whenever(rabbitTemplate)
-            .convertAndSend(
-                any<String>(),
-                any<CreateStudentRequest>(),
-            )
-        val students = listOf(
-            CreateStudentRequest(name = "Test A", email = "test+a@email.com"),
-            CreateStudentRequest(name = "Test A", email = "test+b@email.com"),
-        )
-        studentBatchProducer.sendToQueue(students)
-        verify(rabbitTemplate, times(2)).convertAndSend(
-            eq("student.creation.batch.queue"),
-            any<CreateStudentRequest>(),
-        )
-    }
+	@Test
+	@DisplayName("Should send a student to the queue")
+	fun shouldSendAStudentToQueueSuccessfully() {
+		doNothing()
+			.whenever(rabbitTemplate)
+			.convertAndSend(
+				any<String>(),
+				any<CreateStudentRequest>(),
+			)
+		val students =
+			listOf(
+				CreateStudentRequest(name = "Test A", email = "test+a@email.com"),
+				CreateStudentRequest(name = "Test A", email = "test+b@email.com"),
+			)
+		studentBatchProducer.sendToQueue(students)
+		verify(rabbitTemplate, times(2)).convertAndSend(
+			eq("student.creation.batch.queue"),
+			any<CreateStudentRequest>(),
+		)
+	}
 }

@@ -9,22 +9,22 @@ import org.springframework.stereotype.Component
 
 @Component
 class CourseBatchConsumer(
-    private val courseService: CourseService,
+	private val courseService: CourseService,
 ) {
-    private val logger = LoggerFactory.getLogger(CourseBatchConsumer::class.java)
+	private val logger = LoggerFactory.getLogger(CourseBatchConsumer::class.java)
 
-    @RabbitListener(
-        queues = [RabbitMQConfig.COURSE_BATCH_QUEUE],
-        containerFactory = "batchContainerFactory",
-    )
-    fun processBatch(courses: List<CreateCourseRequest>) {
-        logger.info("Processing courses {}", courses.size)
-        try {
-            courseService.createAllBatchCourses(courses)
-            logger.info("Successfully processed courses {}", courses.size)
-        } catch (ex: Exception) {
-            logger.error("Error processing courses", ex)
-            throw ex
-        }
-    }
+	@RabbitListener(
+		queues = [RabbitMQConfig.COURSE_BATCH_QUEUE],
+		containerFactory = "batchContainerFactory",
+	)
+	fun processBatch(courses: List<CreateCourseRequest>) {
+		logger.info("Processing courses {}", courses.size)
+		try {
+			courseService.createAllBatchCourses(courses)
+			logger.info("Successfully processed courses {}", courses.size)
+		} catch (ex: Exception) {
+			logger.error("Error processing courses", ex)
+			throw ex
+		}
+	}
 }

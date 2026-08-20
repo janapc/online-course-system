@@ -9,43 +9,37 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class RabbitMQConfig {
-    companion object {
-        const val STUDENT_BATCH_QUEUE = "student.creation.batch.queue"
-        const val COURSE_BATCH_QUEUE = "course.creation.batch.queue"
-    }
+	companion object {
+		const val STUDENT_BATCH_QUEUE = "student.creation.batch.queue"
+		const val COURSE_BATCH_QUEUE = "course.creation.batch.queue"
+	}
 
-    /**
-     * declara a fila no rabbitmq
-     */
-    @Bean
-    fun studentBatchQueue(): Queue {
-        return Queue(STUDENT_BATCH_QUEUE, true)
-    }
+	/**
+	 * declara a fila no rabbitmq
+	 */
+	@Bean
+	fun studentBatchQueue(): Queue = Queue(STUDENT_BATCH_QUEUE, true)
 
-    @Bean
-    fun courseBatchQueue(): Queue {
-        return Queue(COURSE_BATCH_QUEUE, true)
-    }
+	@Bean
+	fun courseBatchQueue(): Queue = Queue(COURSE_BATCH_QUEUE, true)
 
-    /**
-     * converte objetos kotlin/java para json e envia pra fila e converte json de volta para objeto ao ler da fila
-     */
-    @Bean
-    fun jsonMessageConverter(): Jackson2JsonMessageConverter {
-        return Jackson2JsonMessageConverter()
-    }
+	/**
+	 * converte objetos kotlin/java para json e envia pra fila e converte json de volta para objeto ao ler da fila
+	 */
+	@Bean
+	fun jsonMessageConverter(): Jackson2JsonMessageConverter = Jackson2JsonMessageConverter()
 
-    /**
-     * configura o comportamento de leitura em batch
-     */
-    @Bean
-    fun batchContainerFactory(connectionFactory: ConnectionFactory): SimpleRabbitListenerContainerFactory {
-        val factory = SimpleRabbitListenerContainerFactory()
-        factory.setConnectionFactory(connectionFactory)
-        factory.setMessageConverter(jsonMessageConverter())
-        factory.setBatchListener(true)
-        factory.setBatchSize(50)
-        factory.setReceiveTimeout(300L)
-        return factory
-    }
+	/**
+	 * configura o comportamento de leitura em batch
+	 */
+	@Bean
+	fun batchContainerFactory(connectionFactory: ConnectionFactory): SimpleRabbitListenerContainerFactory {
+		val factory = SimpleRabbitListenerContainerFactory()
+		factory.setConnectionFactory(connectionFactory)
+		factory.setMessageConverter(jsonMessageConverter())
+		factory.setBatchListener(true)
+		factory.setBatchSize(50)
+		factory.setReceiveTimeout(300L)
+		return factory
+	}
 }

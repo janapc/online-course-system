@@ -17,32 +17,30 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/enrollments")
 class EnrollmentController(
-    private val enrollmentService: EnrollmentService,
+	private val enrollmentService: EnrollmentService,
 ) {
-    @Operation(summary = "Enroll a student in a course (ADMIN only)")
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun create(@Valid @RequestBody request: CreateEnrollmentRequest): EnrollmentResponse {
-        return enrollmentService.create(request)
-    }
+	@Operation(summary = "Enroll a student in a course (ADMIN only)")
+	@PostMapping
+	@PreAuthorize("hasRole('ADMIN')")
+	@ResponseStatus(HttpStatus.CREATED)
+	fun create(
+		@Valid @RequestBody request: CreateEnrollmentRequest,
+	): EnrollmentResponse = enrollmentService.create(request)
 
-    @Operation(summary = "List all enrollments with pagination")
-    @GetMapping
-    fun findAll(pageable: Pageable): Page<EnrollmentDetailsResponse> {
-        return enrollmentService.findAll(pageable)
-    }
+	@Operation(summary = "List all enrollments with pagination")
+	@GetMapping
+	fun findAll(pageable: Pageable): Page<EnrollmentDetailsResponse> = enrollmentService.findAll(pageable)
 
-    @Operation(summary = "Get enrollment details by ID")
-    @GetMapping("/{id}")
-    fun findById(@PathVariable id: Long): EnrollmentDetailsResponse {
-        return enrollmentService.findById(id)
-    }
+	@Operation(summary = "Get enrollment details by ID")
+	@GetMapping("/{id}")
+	fun findById(
+		@PathVariable id: Long,
+	): EnrollmentDetailsResponse = enrollmentService.findById(id)
 
-    @Operation(summary = "Cancel an enrollment (ADMIN only)")
-    @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun cancel(@PathVariable id: Long): EnrollmentResponse {
-        return enrollmentService.cancel(id)
-    }
+	@Operation(summary = "Cancel an enrollment (ADMIN only)")
+	@PatchMapping("/{id}/cancel")
+	@PreAuthorize("hasRole('ADMIN')")
+	fun cancel(
+		@PathVariable id: Long,
+	): EnrollmentResponse = enrollmentService.cancel(id)
 }

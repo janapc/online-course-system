@@ -27,89 +27,90 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class EnrollmentService(
-    private val enrollmentRepository: EnrollmentRepository,
-    private val studentRepository: StudentRepository,
-    private val courseRepository: CourseRepository,
+	private val enrollmentRepository: EnrollmentRepository,
+	private val studentRepository: StudentRepository,
+	private val courseRepository: CourseRepository,
 ) {
+	fun findAll(pageable: Pageable): Page<EnrollmentDetailsResponse> =
+		enrollmentRepository
+			.findAll(pageable)
+			.map { enrollment -> EnrollmentMapper.toDetailsResponse(enrollment) }
 
-    fun findAll(pageable: Pageable): Page<EnrollmentDetailsResponse> {
-        return enrollmentRepository.findAll(pageable)
-            .map { enrollment -> EnrollmentMapper.toDetailsResponse(enrollment) }
-    }
+	@Cacheable(value = ["enrollments"], key = "#id")
+	fun findById(id: Long): EnrollmentDetailsResponse {
+		val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
+		return EnrollmentMapper.toDetailsResponse(enrollment)
+	}
 
-    @Cacheable(value = ["enrollments"], key = "#id")
-    fun findById(id: Long): EnrollmentDetailsResponse {
-        val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
-        return EnrollmentMapper.toDetailsResponse(enrollment)
-    }
+	@Transactional
+	@CacheEvict(value = ["enrollments"], allEntries = true)
+	fun create(request: CreateEnrollmentRequest): EnrollmentResponse {
+		val enrollment =
+			enrollmentRepository.findByStudentIdAndCourseId(
+				request.studentId!!,
+				request.courseId!!,
+			)
 
-    @Transactional
-    @CacheEvict(value = ["enrollments"], allEntries = true)
-    fun create(request: CreateEnrollmentRequest): EnrollmentResponse {
-        val enrollment =
-            enrollmentRepository.findByStudentIdAndCourseId(
-                request.studentId!!,
-                request.courseId!!,
-            )
+		if (enrollment != null) {
+			if (enrollment.active) {
+				throw EnrollmentAlreadyExistsException()
+			}
+			enrollment.active = true
+			enrollment.enrolledAt = LocalDateTime.now()
+			return EnrollmentMapper.toResponse(
+				enrollmentRepository
+					.save(enrollment),
+			)
+		}
+		val student =
+			studentRepository
+				.findById(request.studentId)
+				.orElseThrow {
+					StudentNotFoundException(request.studentId)
+				}
 
-        if (enrollment != null) {
-            if (enrollment.active) {
-                throw EnrollmentAlreadyExistsException()
-            }
-            enrollment.active = true
-            enrollment.enrolledAt = LocalDateTime.now()
-            return EnrollmentMapper.toResponse(
-                enrollmentRepository
-                    .save(enrollment),
-            )
-        }
-        val student =
-            studentRepository.findById(request.studentId)
-                .orElseThrow {
-                    StudentNotFoundException(request.studentId)
-                }
+		val course =
+			courseRepository
+				.findById(request.courseId)
+				.orElseThrow {
+					CourseNotFoundException(request.courseId)
+				}
 
-        val course =
-            courseRepository.findById(request.courseId)
-                .orElseThrow {
-                    CourseNotFoundException(request.courseId)
-                }
+		val newEnrollment =
+			Enrollment(
+				student = student,
+				course = course,
+			)
+		return EnrollmentMapper.toResponse(
+			enrollmentRepository
+				.save(newEnrollment),
+		)
+	}
 
-        val newEnrollment =
-            Enrollment(
-                student = student,
-                course = course,
-            )
-        return EnrollmentMapper.toResponse(
-            enrollmentRepository
-                .save(newEnrollment),
-        )
-    }
+	fun findCoursesByStudent(studentId: Long): List<CourseSummaryResponse> {
+		studentRepository.findById(studentId).orElseThrow { StudentNotFoundException(studentId) }
+		return enrollmentRepository.findByStudentIdAndActiveTrue(studentId).map { enrollment ->
+			CourseMapper.toSummaryResponse(enrollment.course)
+		}
+	}
 
-    fun findCoursesByStudent(studentId: Long): List<CourseSummaryResponse> {
-        studentRepository.findById(studentId).orElseThrow { StudentNotFoundException(studentId) }
-        return enrollmentRepository.findByStudentIdAndActiveTrue(studentId).map { enrollment ->
-            CourseMapper.toSummaryResponse(enrollment.course)
-        }
-    }
+	fun findStudentsByCourse(courseId: Long): List<StudentSummaryResponse> {
+		courseRepository.findById(courseId).orElseThrow { CourseNotFoundException(courseId) }
+		return enrollmentRepository.findByCourseIdAndActiveTrue(courseId).map { enrollment ->
+			StudentMapper.toSummaryResponse(enrollment.student)
+		}
+	}
 
-    fun findStudentsByCourse(courseId: Long): List<StudentSummaryResponse> {
-        courseRepository.findById(courseId).orElseThrow { CourseNotFoundException(courseId) }
-        return enrollmentRepository.findByCourseIdAndActiveTrue(courseId).map { enrollment ->
-            StudentMapper.toSummaryResponse(enrollment.student)
-        }
-    }
-
-    @Transactional
-    @CacheEvict(value = ["enrollments"], allEntries = true)
-    fun cancel(id: Long): EnrollmentResponse {
-        val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
-        if (!enrollment.active) {
-            throw EnrollmentAlreadyCancelledException(id)
-        }
-        enrollment.active = false
-        return EnrollmentMapper.toResponse(
-            enrollmentRepository.save(enrollment),
-        )
-    }
+	@Transactional
+	@CacheEvict(value = ["enrollments"], allEntries = true)
+	fun cancel(id: Long): EnrollmentResponse {
+		val enrollment = enrollmentRepository.findById(id).orElseThrow { EnrollmentNotFoundException(id) }
+		if (!enrollment.active) {
+			throw EnrollmentAlreadyCancelledException(id)
+		}
+		enrollment.active = false
+		return EnrollmentMapper.toResponse(
+			enrollmentRepository.save(enrollment),
+		)
+	}
 }

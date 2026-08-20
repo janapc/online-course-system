@@ -21,39 +21,39 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 class SecurityConfig(
-    private val jwtFilter: JwtFilter,
+	private val jwtFilter: JwtFilter,
 ) {
-    @Bean
-    fun userDetailsService(userRepository: UserRepository): UserDetailsService = UserDetailsService { email ->
-        userRepository.findByEmail(email) ?: throw UsernameNotFoundException("User not found")
-    }
+	@Bean
+	fun userDetailsService(userRepository: UserRepository): UserDetailsService =
+		UserDetailsService { email ->
+			userRepository.findByEmail(email) ?: throw UsernameNotFoundException("User not found")
+		}
 
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
+	@Bean
+	fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
-    @Bean
-    fun authenticationManager(config: AuthenticationConfiguration): AuthenticationManager = config.authenticationManager
+	@Bean
+	fun authenticationManager(config: AuthenticationConfiguration): AuthenticationManager = config.authenticationManager
 
-    @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain = http
-        .csrf { it.disable() }
-        .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-        .exceptionHandling {
-            it.authenticationEntryPoint { _, response, _ ->
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
-            }
-
-        }
-        .authorizeHttpRequests {
-            it.requestMatchers(
-                "/auth/**",
-                "/v3/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
-            ).permitAll()
-                .anyRequest().authenticated()
-        }
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
-        .build()
-
+	@Bean
+	fun filterChain(http: HttpSecurity): SecurityFilterChain =
+		http
+			.csrf { it.disable() }
+			.sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+			.exceptionHandling {
+				it.authenticationEntryPoint { _, response, _ ->
+					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+				}
+			}.authorizeHttpRequests {
+				it
+					.requestMatchers(
+						"/auth/**",
+						"/v3/api-docs/**",
+						"/swagger-ui/**",
+						"/swagger-ui.html",
+					).permitAll()
+					.anyRequest()
+					.authenticated()
+			}.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
+			.build()
 }

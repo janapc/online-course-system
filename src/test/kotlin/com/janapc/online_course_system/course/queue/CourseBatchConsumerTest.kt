@@ -12,21 +12,21 @@ import org.mockito.kotlin.verify
 
 @ExtendWith(MockitoExtension::class)
 class CourseBatchConsumerTest {
+	@Mock
+	private lateinit var courseService: CourseService
 
-    @Mock
-    private lateinit var courseService: CourseService
+	@InjectMocks
+	private lateinit var courseBatchConsumer: CourseBatchConsumer
 
-    @InjectMocks
-    private lateinit var courseBatchConsumer: CourseBatchConsumer
-
-    @Test
-    @DisplayName("Should call CourseService createAllBatchCourses when batch is received from queue")
-    fun shouldProcessCourseBatchSuccessfully() {
-        val courses = listOf(
-            CreateCourseRequest(name = "Course A", description = "This is a description A"),
-            CreateCourseRequest(name = "Course B", description = "This is a description B"),
-        )
-        courseBatchConsumer.processBatch(courses)
-        verify(courseService).createAllBatchCourses(courses)
-    }
+	@Test
+	@DisplayName("Should call CourseService createAllBatchCourses when batch is received from queue")
+	fun shouldProcessCourseBatchSuccessfully() {
+		val courses =
+			listOf(
+				CreateCourseRequest(name = "Course A", description = "This is a description A"),
+				CreateCourseRequest(name = "Course B", description = "This is a description B"),
+			)
+		courseBatchConsumer.processBatch(courses)
+		verify(courseService).createAllBatchCourses(courses)
+	}
 }

@@ -20,62 +20,62 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/courses")
 class CourseController(
-    private val courseService: CourseService,
-    private val enrollmentService: EnrollmentService,
+	private val courseService: CourseService,
+	private val enrollmentService: EnrollmentService,
 ) {
+	@Operation(summary = "Create a new course (ADMIN only)")
+	@PostMapping
+	@PreAuthorize("hasRole('ADMIN')")
+	@ResponseStatus(HttpStatus.CREATED)
+	fun create(
+		@Valid @RequestBody request: CreateCourseRequest,
+	): CourseResponse = courseService.create(request)
 
-    @Operation(summary = "Create a new course (ADMIN only)")
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun create(@Valid @RequestBody request: CreateCourseRequest): CourseResponse {
-        return courseService.create(request)
-    }
+	@Operation(summary = "List all courses with optional filters")
+	@GetMapping
+	fun findAll(
+		@RequestParam(required = false) name: String?,
+		@RequestParam(required = false) active: Boolean?,
+		pageable: Pageable,
+	): Page<CourseResponse> = courseService.findAll(name, active, pageable)
 
-    @Operation(summary = "List all courses with optional filters")
-    @GetMapping
-    fun findAll(
-        @RequestParam(required = false) name: String?,
-        @RequestParam(required = false) active: Boolean?,
-        pageable: Pageable,
-    ): Page<CourseResponse> {
-        return courseService.findAll(name, active, pageable)
-    }
+	@Operation(summary = "Get course by ID")
+	@GetMapping("/{id}")
+	fun findById(
+		@PathVariable id: Long,
+	): CourseResponse = courseService.findById(id)
 
-    @Operation(summary = "Get course by ID")
-    @GetMapping("/{id}")
-    fun findById(@PathVariable id: Long): CourseResponse {
-        return courseService.findById(id)
-    }
+	@Operation(summary = "Update an existing course (ADMIN only)")
+	@PutMapping("/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	fun update(
+		@PathVariable id: Long,
+		@Valid @RequestBody request: UpdateCourseRequest,
+	): CourseResponse = courseService.update(id, request)
 
-    @Operation(summary = "Update an existing course (ADMIN only)")
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    fun update(@PathVariable id: Long, @Valid @RequestBody request: UpdateCourseRequest): CourseResponse {
-        return courseService.update(id, request)
-    }
+	@Operation(summary = "Delete a course (ADMIN only)")
+	@DeleteMapping("/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	fun delete(
+		@PathVariable id: Long,
+	) {
+		courseService.delete(id)
+	}
 
-    @Operation(summary = "Delete a course (ADMIN only)")
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: Long) {
-        courseService.delete(id)
-    }
+	@Operation(summary = "Get enrolled students of a course")
+	@GetMapping("/{id}/students")
+	fun findStudents(
+		@PathVariable id: Long,
+	): List<StudentSummaryResponse> = enrollmentService.findStudentsByCourse(id)
 
-    @Operation(summary = "Get enrolled students of a course")
-    @GetMapping("/{id}/students")
-    fun findStudents(@PathVariable id: Long): List<StudentSummaryResponse> {
-        return enrollmentService.findStudentsByCourse(id)
-    }
-
-    @Operation(summary = "Enqueue a batch of courses for creation (ADMIN only)")
-    @PostMapping("/batch")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    @PreAuthorize("hasRole('ADMIN')")
-    fun createBatch(
-        @Valid @RequestBody request: CreateCourseBatchRequest,
-    ) {
-        courseService.sendCoursesToQueue(request)
-    }
+	@Operation(summary = "Enqueue a batch of courses for creation (ADMIN only)")
+	@PostMapping("/batch")
+	@ResponseStatus(HttpStatus.ACCEPTED)
+	@PreAuthorize("hasRole('ADMIN')")
+	fun createBatch(
+		@Valid @RequestBody request: CreateCourseBatchRequest,
+	) {
+		courseService.sendCoursesToQueue(request)
+	}
 }

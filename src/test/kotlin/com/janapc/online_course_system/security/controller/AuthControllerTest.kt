@@ -28,109 +28,107 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(
-    controllers = [AuthController::class],
-    excludeAutoConfiguration = [SecurityAutoConfiguration::class],
-    excludeFilters = [
-        ComponentScan.Filter(
-            type = FilterType.ASSIGNABLE_TYPE,
-            classes = [JwtFilter::class, JwtService::class],
-        ),
-    ],
+	controllers = [AuthController::class],
+	excludeAutoConfiguration = [SecurityAutoConfiguration::class],
+	excludeFilters = [
+		ComponentScan.Filter(
+			type = FilterType.ASSIGNABLE_TYPE,
+			classes = [JwtFilter::class, JwtService::class],
+		),
+	],
 )
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+	@Autowired
+	private lateinit var mockMvc: MockMvc
 
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+	@Autowired
+	private lateinit var objectMapper: ObjectMapper
 
-    @MockitoBean
-    private lateinit var authService: AuthService
+	@MockitoBean
+	private lateinit var authService: AuthService
 
-    @Nested
-    @DisplayName("POST /auth/login")
-    inner class LoginEndpointTests {
+	@Nested
+	@DisplayName("POST /auth/login")
+	inner class LoginEndpointTests {
+		@Test
+		@DisplayName("Should return 200 OK and JWT token when login is successful")
+		fun shouldReturn200AndTokenOnSuccessfulLogin() {
+			val request = LoginRequest("test@test.com", "password")
+			val authResponse = AuthResponse(token = "mocked-jwt-token")
+			whenever(authService.login(any())).thenReturn(authResponse)
+			mockMvc
+				.perform(
+					post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)),
+				).andExpect(status().isOk)
+				.andExpect(jsonPath("$.token").value(authResponse.token))
+				.andExpect(jsonPath("$.type").value("Bearer"))
+		}
 
-        @Test
-        @DisplayName("Should return 200 OK and JWT token when login is successful")
-        fun shouldReturn200AndTokenOnSuccessfulLogin() {
-            val request = LoginRequest("test@test.com", "password")
-            val authResponse = AuthResponse(token = "mocked-jwt-token")
-            whenever(authService.login(any())).thenReturn(authResponse)
-            mockMvc.perform(
-                post("/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)),
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.token").value(authResponse.token))
-                .andExpect(jsonPath("$.type").value("Bearer"))
-        }
+		@Test
+		@DisplayName("Should return 401 Unauthorized when credentials are invalid")
+		fun shouldReturn401WhenCredentialsAreInvalid() {
+			val request = LoginRequest("test@test.com", "wrongpassword")
+			val expectedExceptionMessage = "Invalid email or password"
+			whenever(authService.login(any())).thenThrow(
+				BadCredentialsException("Bad credentials"),
+			)
+			mockMvc
+				.perform(
+					post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)),
+				).andExpect(status().isUnauthorized)
+				.andExpect(jsonPath("$.message").value(expectedExceptionMessage))
+		}
 
-        @Test
-        @DisplayName("Should return 401 Unauthorized when credentials are invalid")
-        fun shouldReturn401WhenCredentialsAreInvalid() {
-            val request = LoginRequest("test@test.com", "wrongpassword")
-            val expectedExceptionMessage = "Invalid email or password"
-            whenever(authService.login(any())).thenThrow(
-                BadCredentialsException("Bad credentials"),
-            )
-            mockMvc.perform(
-                post("/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)),
-            )
-                .andExpect(status().isUnauthorized)
-                .andExpect(jsonPath("$.message").value(expectedExceptionMessage))
-        }
+		@Test
+		@DisplayName("Should return 400 Bad Request when request body is invalid")
+		fun shouldReturn400WhenLoginRequestIsInvalid() {
+			val invalidRequest = LoginRequest(email = "invalid-email", password = "")
+			mockMvc
+				.perform(
+					post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(invalidRequest)),
+				).andExpect(status().isBadRequest)
+				.andExpect(jsonPath("$.fields").isArray)
+		}
+	}
 
-        @Test
-        @DisplayName("Should return 400 Bad Request when request body is invalid")
-        fun shouldReturn400WhenLoginRequestIsInvalid() {
-            val invalidRequest = LoginRequest(email = "invalid-email", password = "")
-            mockMvc.perform(
-                post("/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(invalidRequest)),
-            )
-                .andExpect(status().isBadRequest)
-                .andExpect(jsonPath("$.fields").isArray)
-        }
-    }
+	@Nested
+	@DisplayName("POST /auth/register")
+	inner class RegisterEndpointTests {
+		@Test
+		@DisplayName("Should return 201 Created and JWT token when registration is successful")
+		fun shouldReturn201AndTokenOnSuccessfulRegistration() {
+			val request = RegisterRequest("new@test.com", "password123")
+			val authResponse = AuthResponse(token = "mocked-jwt-token")
+			whenever(authService.register(any())).thenReturn(authResponse)
 
-    @Nested
-    @DisplayName("POST /auth/register")
-    inner class RegisterEndpointTests {
+			mockMvc
+				.perform(
+					post("/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)),
+				).andExpect(status().isCreated)
+				.andExpect(jsonPath("$.token").value(authResponse.token))
+				.andExpect(jsonPath("$.type").value("Bearer"))
+		}
 
-        @Test
-        @DisplayName("Should return 201 Created and JWT token when registration is successful")
-        fun shouldReturn201AndTokenOnSuccessfulRegistration() {
-            val request = RegisterRequest("new@test.com", "password123")
-            val authResponse = AuthResponse(token = "mocked-jwt-token")
-            whenever(authService.register(any())).thenReturn(authResponse)
+		@Test
+		@DisplayName("Should return 400 Bad Request when password is shorter than 6 characters")
+		fun shouldReturn400WhenPasswordIsTooShort() {
+			val invalidRequest = RegisterRequest(email = "test@test.com", password = "123")
 
-            mockMvc.perform(
-                post("/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)),
-            )
-                .andExpect(status().isCreated)
-                .andExpect(jsonPath("$.token").value(authResponse.token))
-                .andExpect(jsonPath("$.type").value("Bearer"))
-        }
-
-        @Test
-        @DisplayName("Should return 400 Bad Request when password is shorter than 6 characters")
-        fun shouldReturn400WhenPasswordIsTooShort() {
-            val invalidRequest = RegisterRequest(email = "test@test.com", password = "123")
-
-            mockMvc.perform(
-                post("/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(invalidRequest)),
-            )
-                .andExpect(status().isBadRequest)
-        }
-    }
+			mockMvc
+				.perform(
+					post("/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(invalidRequest)),
+				).andExpect(status().isBadRequest)
+		}
+	}
 }

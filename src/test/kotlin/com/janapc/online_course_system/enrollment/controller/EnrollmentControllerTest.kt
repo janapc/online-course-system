@@ -33,166 +33,168 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(
-    controllers = [EnrollmentController::class],
-    excludeAutoConfiguration = [SecurityAutoConfiguration::class],
-    excludeFilters = [
-        ComponentScan.Filter(
-            type = FilterType.ASSIGNABLE_TYPE,
-            classes = [JwtFilter::class, JwtService::class],
-        ),
-    ],
+	controllers = [EnrollmentController::class],
+	excludeAutoConfiguration = [SecurityAutoConfiguration::class],
+	excludeFilters = [
+		ComponentScan.Filter(
+			type = FilterType.ASSIGNABLE_TYPE,
+			classes = [JwtFilter::class, JwtService::class],
+		),
+	],
 )
 @AutoConfigureMockMvc(addFilters = false)
 class EnrollmentControllerTest {
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+	@Autowired
+	private lateinit var mockMvc: MockMvc
 
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+	@Autowired
+	private lateinit var objectMapper: ObjectMapper
 
-    @MockitoBean
-    private lateinit var enrollmentService: EnrollmentService
+	@MockitoBean
+	private lateinit var enrollmentService: EnrollmentService
 
-    private val yesterday = LocalDateTime.now().minusDays(1)
-    private val today = LocalDateTime.now()
+	private val yesterday = LocalDateTime.now().minusDays(1)
+	private val today = LocalDateTime.now()
 
-    @Nested
-    @DisplayName("POST /enrollments")
-    inner class CreateTests {
+	@Nested
+	@DisplayName("POST /enrollments")
+	inner class CreateTests {
+		@Test
+		@DisplayName("Should return 201 Created when enrollment request is valid")
+		fun shouldCreateEnrollmentSuccessfully() {
+			val request = CreateEnrollmentRequest(studentId = 1L, courseId = 1L)
+			val response = createSimpleEnrollmentResponse()
+			whenever(enrollmentService.create(request)).thenReturn(response)
+			mockMvc
+				.perform(
+					post("/enrollments")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)),
+				).andExpect(status().isCreated)
+				.andExpect(jsonPath("$.id").value(20L))
+				.andExpect(jsonPath("$.studentId").value(1L))
+				.andExpect(jsonPath("$.courseId").value(1L))
+				.andExpect(jsonPath("$.active").isBoolean())
+		}
 
-        @Test
-        @DisplayName("Should return 201 Created when enrollment request is valid")
-        fun shouldCreateEnrollmentSuccessfully() {
-            val request = CreateEnrollmentRequest(studentId = 1L, courseId = 1L)
-            val response = createSimpleEnrollmentResponse()
-            whenever(enrollmentService.create(request)).thenReturn(response)
-            mockMvc.perform(
-                post("/enrollments")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)),
-            )
-                .andExpect(status().isCreated)
-                .andExpect(jsonPath("$.id").value(20L))
-                .andExpect(jsonPath("$.studentId").value(1L))
-                .andExpect(jsonPath("$.courseId").value(1L))
-                .andExpect(jsonPath("$.active").isBoolean())
-        }
+		@Test
+		@DisplayName("Should return 400 Bad Request when CreateEnrollmentRequest is invalid")
+		fun shouldReturn400WhenCreateRequestIsInvalid() {
+			val invalidRequest = CreateEnrollmentRequest(studentId = null, courseId = null)
+			mockMvc
+				.perform(
+					post("/enrollments")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(invalidRequest)),
+				).andExpect(status().isBadRequest)
+				.andExpect(jsonPath("$.fields").isArray)
+		}
+	}
 
-        @Test
-        @DisplayName("Should return 400 Bad Request when CreateEnrollmentRequest is invalid")
-        fun shouldReturn400WhenCreateRequestIsInvalid() {
-            val invalidRequest = CreateEnrollmentRequest(studentId = null, courseId = null)
-            mockMvc.perform(
-                post("/enrollments")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(invalidRequest)),
-            )
-                .andExpect(status().isBadRequest)
-                .andExpect(jsonPath("$.fields").isArray)
-        }
-    }
+	@Nested
+	@DisplayName("GET /enrollments")
+	inner class FindAllTests {
+		@Test
+		@DisplayName("Should return 200 OK with paged enrollments")
+		fun shouldReturnPagedEnrollments() {
+			val page = PageImpl(listOf(createSimpleEnrollmentDetailsResponse()), PageRequest.of(0, 10), 1)
+			whenever(enrollmentService.findAll(any())).thenReturn(page)
 
-    @Nested
-    @DisplayName("GET /enrollments")
-    inner class FindAllTests {
+			mockMvc
+				.perform(
+					get("/enrollments")
+						.contentType(MediaType.APPLICATION_JSON),
+				).andExpect(status().isOk)
+				.andExpect(jsonPath("$.content[0].id").value(20L))
+				.andExpect(jsonPath("$.content[0].student").isNotEmpty())
+				.andExpect(jsonPath("$.content[0].course").isNotEmpty())
+				.andExpect(jsonPath("$.content[0].active").value(true))
+		}
+	}
 
-        @Test
-        @DisplayName("Should return 200 OK with paged enrollments")
-        fun shouldReturnPagedEnrollments() {
-            val page = PageImpl(listOf(createSimpleEnrollmentDetailsResponse()), PageRequest.of(0, 10), 1)
-            whenever(enrollmentService.findAll(any())).thenReturn(page)
+	@Nested
+	@DisplayName("GET /enrollments/{id}")
+	inner class FindByIdTests {
+		@Test
+		@DisplayName("Should return 200 OK with enrollment when found")
+		fun shouldReturnEnrollmentWhenFound() {
+			whenever(enrollmentService.findById(20L)).thenReturn(createSimpleEnrollmentDetailsResponse())
+			mockMvc
+				.perform(get("/enrollments/20"))
+				.andExpect(status().isOk)
+				.andExpect(jsonPath("$.id").value(20))
+				.andExpect(jsonPath("$.student").isNotEmpty())
+				.andExpect(jsonPath("$.course").isNotEmpty())
+				.andExpect(jsonPath("$.active").value(true))
+		}
 
-            mockMvc.perform(
-                get("/enrollments")
-                    .contentType(MediaType.APPLICATION_JSON),
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.content[0].id").value(20L))
-                .andExpect(jsonPath("$.content[0].student").isNotEmpty())
-                .andExpect(jsonPath("$.content[0].course").isNotEmpty())
-                .andExpect(jsonPath("$.content[0].active").value(true))
-        }
-    }
+		@Test
+		@DisplayName("Should return 404 Not Found when enrollment does not exist")
+		fun shouldReturn404WhenEnrollmentNotFound() {
+			whenever(enrollmentService.findById(99L)).thenThrow(EnrollmentNotFoundException(99))
 
-    @Nested
-    @DisplayName("GET /enrollments/{id}")
-    inner class FindByIdTests {
+			mockMvc
+				.perform(get("/enrollments/99"))
+				.andExpect(status().isNotFound)
+				.andExpect(jsonPath("$.message").value("Enrollment not found with id 99"))
+		}
+	}
 
-        @Test
-        @DisplayName("Should return 200 OK with enrollment when found")
-        fun shouldReturnEnrollmentWhenFound() {
-            whenever(enrollmentService.findById(20L)).thenReturn(createSimpleEnrollmentDetailsResponse())
-            mockMvc.perform(get("/enrollments/20"))
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.id").value(20))
-                .andExpect(jsonPath("$.student").isNotEmpty())
-                .andExpect(jsonPath("$.course").isNotEmpty())
-                .andExpect(jsonPath("$.active").value(true))
-        }
+	@Nested
+	@DisplayName("Patch /enrollments/{id}/cancel")
+	inner class CancelTests {
+		@Test
+		@DisplayName("Should return 200 OK with enrollment is cancelled")
+		fun shouldReturnEnrollmentWhenCancelled() {
+			val enrollment = createSimpleEnrollmentResponse()
+			val enrollmentCancelled = enrollment.copy(active = false)
+			whenever(enrollmentService.cancel(20L)).thenReturn(enrollmentCancelled)
+			mockMvc
+				.perform(patch("/enrollments/20/cancel"))
+				.andExpect(status().isOk)
+				.andExpect(jsonPath("$.id").value(20))
+				.andExpect(jsonPath("$.studentId").isNotEmpty())
+				.andExpect(jsonPath("$.courseId").isNotEmpty())
+				.andExpect(jsonPath("$.active").value(false))
+		}
 
-        @Test
-        @DisplayName("Should return 404 Not Found when enrollment does not exist")
-        fun shouldReturn404WhenEnrollmentNotFound() {
+		@Test
+		@DisplayName("Should return 409 Conflict when enrollment is cancelled")
+		fun shouldReturn409WhenEnrollmentAlreadyCancelled() {
+			val expectedMessage = "Enrollment with id 99 has been cancelled"
+			whenever(enrollmentService.cancel(99L)).thenThrow(EnrollmentAlreadyCancelledException(99))
+			mockMvc
+				.perform(patch("/enrollments/99/cancel"))
+				.andExpect(status().isConflict)
+				.andExpect(jsonPath("$.message").value(expectedMessage))
+		}
+	}
 
-            whenever(enrollmentService.findById(99L)).thenThrow(EnrollmentNotFoundException(99))
+	private fun createSimpleEnrollmentResponse(): EnrollmentResponse =
+		EnrollmentResponse(
+			id = 20L,
+			studentId = 1L,
+			courseId = 1L,
+			enrolledAt = today,
+			active = true,
+		)
 
-
-            mockMvc.perform(get("/enrollments/99"))
-                .andExpect(status().isNotFound)
-                .andExpect(jsonPath("$.message").value("Enrollment not found with id 99"))
-        }
-    }
-
-    @Nested
-    @DisplayName("Patch /enrollments/{id}/cancel")
-    inner class CancelTests {
-
-        @Test
-        @DisplayName("Should return 200 OK with enrollment is cancelled")
-        fun shouldReturnEnrollmentWhenCancelled() {
-            val enrollment = createSimpleEnrollmentResponse()
-            val enrollmentCancelled = enrollment.copy(active = false)
-            whenever(enrollmentService.cancel(20L)).thenReturn(enrollmentCancelled)
-            mockMvc.perform(patch("/enrollments/20/cancel"))
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.id").value(20))
-                .andExpect(jsonPath("$.studentId").isNotEmpty())
-                .andExpect(jsonPath("$.courseId").isNotEmpty())
-                .andExpect(jsonPath("$.active").value(false))
-        }
-
-        @Test
-        @DisplayName("Should return 409 Conflict when enrollment is cancelled")
-        fun shouldReturn409WhenEnrollmentAlreadyCancelled() {
-            val expectedMessage = "Enrollment with id 99 has been cancelled"
-            whenever(enrollmentService.cancel(99L)).thenThrow(EnrollmentAlreadyCancelledException(99))
-            mockMvc.perform(patch("/enrollments/99/cancel"))
-                .andExpect(status().isConflict)
-                .andExpect(jsonPath("$.message").value(expectedMessage))
-        }
-    }
-
-    private fun createSimpleEnrollmentResponse(): EnrollmentResponse = EnrollmentResponse(
-        id = 20L,
-        studentId = 1L,
-        courseId = 1L,
-        enrolledAt = today,
-        active = true,
-    )
-
-    private fun createSimpleEnrollmentDetailsResponse(): EnrollmentDetailsResponse = EnrollmentDetailsResponse(
-        id = 20L,
-        student = StudentSummaryResponse(
-            id = 1L,
-            name = "Test",
-        ),
-        course = CourseSummaryResponse(
-            id = 1L,
-            name = "Kotlin",
-        ),
-        active = true,
-        enrolledAt = today,
-        createdAt = yesterday,
-        updatedAt = yesterday,
-    )
+	private fun createSimpleEnrollmentDetailsResponse(): EnrollmentDetailsResponse =
+		EnrollmentDetailsResponse(
+			id = 20L,
+			student =
+				StudentSummaryResponse(
+					id = 1L,
+					name = "Test",
+				),
+			course =
+				CourseSummaryResponse(
+					id = 1L,
+					name = "Kotlin",
+				),
+			active = true,
+			enrolledAt = today,
+			createdAt = yesterday,
+			updatedAt = yesterday,
+		)
 }

@@ -27,149 +27,158 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class CourseE2ETest {
+	@Autowired
+	private lateinit var mockMvc: MockMvc
 
-    @Autowired
-    private lateinit var mockMvc: MockMvc
+	@Autowired
+	private lateinit var objectMapper: ObjectMapper
 
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
+	private fun MockHttpServletRequestBuilder.bearer(token: String): MockHttpServletRequestBuilder =
+		this.header(HttpHeaders.AUTHORIZATION, "Bearer $token")
 
-    private fun MockHttpServletRequestBuilder.bearer(token: String): MockHttpServletRequestBuilder =
-        this.header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+	private fun MockHttpServletRequestBuilder.json(body: Any): MockHttpServletRequestBuilder =
+		this.contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))
 
-    private fun MockHttpServletRequestBuilder.json(body: Any): MockHttpServletRequestBuilder =
-        this.contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(body))
+	private fun obtainAccessToken(
+		email: String = "course_e2e@test.com",
+		password: String = "password123",
+		role: Role = Role.ADMIN,
+	): String {
+		mockMvc.perform(post("/auth/register").json(RegisterRequest(email, password, role)))
 
-    private fun obtainAccessToken(
-        email: String = "course_e2e@test.com",
-        password: String = "password123",
-        role: Role = Role.ADMIN,
-    ): String {
-        mockMvc.perform(post("/auth/register").json(RegisterRequest(email, password, role)))
+		val loginResult =
+			mockMvc
+				.perform(
+					post("/auth/login").json(LoginRequest(email, password)),
+				).andExpect(status().isOk)
+				.andReturn()
 
-        val loginResult = mockMvc.perform(
-            post("/auth/login").json(LoginRequest(email, password)),
-        ).andExpect(status().isOk).andReturn()
+		val response =
+			objectMapper.readValue(
+				loginResult.response.contentAsString,
+				AuthResponse::class.java,
+			)
+		return response.token
+	}
 
-        val response = objectMapper.readValue(
-            loginResult.response.contentAsString,
-            AuthResponse::class.java,
-        )
-        return response.token
-    }
+	@Nested
+	@DisplayName("Course Operations & Lifecycle")
+	inner class CourseOperationsTests {
+		@Test
+		@DisplayName("Should create, find, update and delete a course successfully")
+		fun shouldExecuteFullCourseLifecycle() {
+			val token = obtainAccessToken()
+			val createCourseRequest =
+				CreateCourseRequest(
+					name = "Kotlin Architecture 101",
+					description = "Learn Clean Architecture and Spring Boot",
+				)
 
-    @Nested
-    @DisplayName("Course Operations & Lifecycle")
-    inner class CourseOperationsTests {
+			val courseResult =
+				mockMvc
+					.perform(
+						post("/courses")
+							.bearer(token)
+							.json(createCourseRequest),
+					).andExpect(status().isCreated)
+					.andExpect(jsonPath("$.name").value("Kotlin Architecture 101"))
+					.andExpect(jsonPath("$.description").value("Learn Clean Architecture and Spring Boot"))
+					.andReturn()
+			val courseId =
+				objectMapper
+					.readValue(
+						courseResult.response.contentAsString,
+						CourseResponse::class.java,
+					).id
 
-        @Test
-        @DisplayName("Should create, find, update and delete a course successfully")
-        fun shouldExecuteFullCourseLifecycle() {
-            val token = obtainAccessToken()
-            val createCourseRequest = CreateCourseRequest(
-                name = "Kotlin Architecture 101",
-                description = "Learn Clean Architecture and Spring Boot",
-            )
+			mockMvc
+				.perform(
+					get("/courses/$courseId").bearer(token),
+				).andExpect(status().isOk)
+				.andExpect(jsonPath("$.id").value(courseId))
+				.andExpect(jsonPath("$.name").value("Kotlin Architecture 101"))
 
-            val courseResult = mockMvc.perform(
-                post("/courses")
-                    .bearer(token)
-                    .json(createCourseRequest),
-            )
-                .andExpect(status().isCreated)
-                .andExpect(jsonPath("$.name").value("Kotlin Architecture 101"))
-                .andExpect(jsonPath("$.description").value("Learn Clean Architecture and Spring Boot"))
-                .andReturn()
-            val courseId = objectMapper.readValue(
-                courseResult.response.contentAsString,
-                CourseResponse::class.java,
-            ).id
+			val updateRequest =
+				UpdateCourseRequest(
+					name = "Advanced Kotlin Architecture",
+					description = "Updated description for Advanced topics",
+					active = false,
+				)
 
-            mockMvc.perform(
-                get("/courses/$courseId").bearer(token),
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.id").value(courseId))
-                .andExpect(jsonPath("$.name").value("Kotlin Architecture 101"))
+			mockMvc
+				.perform(
+					put("/courses/$courseId")
+						.bearer(token)
+						.json(updateRequest),
+				).andExpect(status().isOk)
+				.andExpect(jsonPath("$.name").value("Advanced Kotlin Architecture"))
+				.andExpect(jsonPath("$.active").value(false))
 
-            val updateRequest = UpdateCourseRequest(
-                name = "Advanced Kotlin Architecture",
-                description = "Updated description for Advanced topics",
-                active = false,
-            )
+			mockMvc
+				.perform(
+					delete("/courses/$courseId").bearer(token),
+				).andExpect(status().isNoContent)
 
-            mockMvc.perform(
-                put("/courses/$courseId")
-                    .bearer(token)
-                    .json(updateRequest),
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.name").value("Advanced Kotlin Architecture"))
-                .andExpect(jsonPath("$.active").value(false))
+			mockMvc
+				.perform(
+					get("/courses/$courseId").bearer(token),
+				).andExpect(status().isNotFound)
+		}
 
-            mockMvc.perform(
-                delete("/courses/$courseId").bearer(token),
-            )
-                .andExpect(status().isNoContent)
+		@Test
+		@DisplayName("Should filter courses by name and status with pagination")
+		fun shouldFilterCoursesWithPagination() {
+			val token = obtainAccessToken()
 
-            mockMvc.perform(
-                get("/courses/$courseId").bearer(token),
-            )
-                .andExpect(status().isNotFound)
-        }
+			val createCourseRequest =
+				CreateCourseRequest(
+					name = "Docker for Developers",
+					description = "Containerization basics",
+				)
+			mockMvc
+				.perform(post("/courses").bearer(token).json(createCourseRequest))
+				.andExpect(status().isCreated)
 
-        @Test
-        @DisplayName("Should filter courses by name and status with pagination")
-        fun shouldFilterCoursesWithPagination() {
-            val token = obtainAccessToken()
+			mockMvc
+				.perform(
+					get("/courses")
+						.bearer(token)
+						.param("name", "Docker")
+						.param("active", "true")
+						.param("page", "0")
+						.param("size", "5"),
+				).andExpect(status().isOk)
+				.andExpect(jsonPath("$.content").isArray)
+				.andExpect(jsonPath("$.pageable.pageSize").value(5))
+		}
+	}
 
-            val createCourseRequest = CreateCourseRequest(
-                name = "Docker for Developers",
-                description = "Containerization basics",
-            )
-            mockMvc.perform(post("/courses").bearer(token).json(createCourseRequest))
-                .andExpect(status().isCreated)
+	@Nested
+	@DisplayName("Validation")
+	inner class ValidationTests {
+		@Test
+		@DisplayName("Should return 400 Bad Request when creating course with invalid data")
+		fun shouldReturn400WhenDataIsInvalid() {
+			val token = obtainAccessToken()
+			val invalidRequest = CreateCourseRequest(name = "", description = "")
 
-            mockMvc.perform(
-                get("/courses")
-                    .bearer(token)
-                    .param("name", "Docker")
-                    .param("active", "true")
-                    .param("page", "0")
-                    .param("size", "5"),
-            )
-                .andExpect(status().isOk)
-                .andExpect(jsonPath("$.content").isArray)
-                .andExpect(jsonPath("$.pageable.pageSize").value(5))
-        }
-    }
+			mockMvc
+				.perform(
+					post("/courses")
+						.bearer(token)
+						.json(invalidRequest),
+				).andExpect(status().isBadRequest)
+				.andExpect(jsonPath("$.fields").isArray)
+		}
 
-    @Nested
-    @DisplayName("Validation")
-    inner class ValidationTests {
+		@Test
+		@DisplayName("Should return 404 Not Found when searching for non-existing course")
+		fun shouldReturn404ForMissingCourse() {
+			val token = obtainAccessToken()
 
-        @Test
-        @DisplayName("Should return 400 Bad Request when creating course with invalid data")
-        fun shouldReturn400WhenDataIsInvalid() {
-            val token = obtainAccessToken()
-            val invalidRequest = CreateCourseRequest(name = "", description = "")
-
-            mockMvc.perform(
-                post("/courses")
-                    .bearer(token)
-                    .json(invalidRequest),
-            )
-                .andExpect(status().isBadRequest)
-                .andExpect(jsonPath("$.fields").isArray)
-        }
-
-        @Test
-        @DisplayName("Should return 404 Not Found when searching for non-existing course")
-        fun shouldReturn404ForMissingCourse() {
-            val token = obtainAccessToken()
-
-            mockMvc.perform(get("/courses/999999").bearer(token))
-                .andExpect(status().isNotFound)
-        }
-    }
+			mockMvc
+				.perform(get("/courses/999999").bearer(token))
+				.andExpect(status().isNotFound)
+		}
+	}
 }

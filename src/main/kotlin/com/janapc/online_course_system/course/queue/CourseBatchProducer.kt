@@ -8,16 +8,16 @@ import org.springframework.stereotype.Component
 
 @Component
 class CourseBatchProducer(
-    private val rabbitTemplate: RabbitTemplate,
+	private val rabbitTemplate: RabbitTemplate,
 ) {
-    private val logger = LoggerFactory.getLogger(CourseBatchProducer::class.java)
+	private val logger = LoggerFactory.getLogger(CourseBatchProducer::class.java)
 
-    fun sendToQueue(courses: List<CreateCourseRequest>) {
-        logger.info("Sending {} course(s)", courses.size)
-        courses.forEach { course ->
-            logger.debug("Publishing course with name {}", course.name)
-            rabbitTemplate.convertAndSend(COURSE_BATCH_QUEUE, course)
-        }
-        logger.info("Successfully published {} course(s) messages to queue {}", courses.size, COURSE_BATCH_QUEUE)
-    }
+	fun sendToQueue(courses: List<CreateCourseRequest>) {
+		logger.info("Sending {} course(s)", courses.size)
+		courses.forEach { course ->
+			logger.debug("Publishing course with name {}", course.name)
+			rabbitTemplate.convertAndSend(COURSE_BATCH_QUEUE, course)
+		}
+		logger.info("Successfully published {} course(s) messages to queue {}", courses.size, COURSE_BATCH_QUEUE)
+	}
 }

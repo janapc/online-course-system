@@ -11,25 +11,25 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 @Component
 class JwtFilter(
-    private val jwtService: JwtService,
-    private val userRepository: UserRepository,
+	private val jwtService: JwtService,
+	private val userRepository: UserRepository,
 ) : OncePerRequestFilter() {
-    override fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain,
-    ) {
-        val authHeader = request.getHeader("Authorization")
-        if (authHeader?.startsWith("Bearer ") == true) {
-            val token = authHeader.substring(7)
-            val email = jwtService.extractUsername(token)
-            if (email != null && SecurityContextHolder.getContext().authentication == null) {
-                userRepository.findByEmail(email)?.let { user ->
-                    val auth = UsernamePasswordAuthenticationToken(user, null, user.authorities)
-                    SecurityContextHolder.getContext().authentication = auth
-                }
-            }
-        }
-        filterChain.doFilter(request, response)
-    }
+	override fun doFilterInternal(
+		request: HttpServletRequest,
+		response: HttpServletResponse,
+		filterChain: FilterChain,
+	) {
+		val authHeader = request.getHeader("Authorization")
+		if (authHeader?.startsWith("Bearer ") == true) {
+			val token = authHeader.substring(7)
+			val email = jwtService.extractUsername(token)
+			if (email != null && SecurityContextHolder.getContext().authentication == null) {
+				userRepository.findByEmail(email)?.let { user ->
+					val auth = UsernamePasswordAuthenticationToken(user, null, user.authorities)
+					SecurityContextHolder.getContext().authentication = auth
+				}
+			}
+		}
+		filterChain.doFilter(request, response)
+	}
 }

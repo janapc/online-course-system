@@ -19,39 +19,41 @@ import org.springframework.data.redis.serializer.StringRedisSerializer
 @EnableCaching
 @Profile("!test")
 class RedisConfig {
+	@Bean
+	fun redisCacheManager(
+		connectionFactory: RedisConnectionFactory,
+		objectMapper: ObjectMapper,
+	): RedisCacheManager {
+		val redisObjectMapper = objectMapper.copy()
 
-    @Bean
-    fun redisCacheManager(
-        connectionFactory: RedisConnectionFactory,
-        objectMapper: ObjectMapper,
-    ): RedisCacheManager {
-        val redisObjectMapper = objectMapper.copy()
+		val typeValidator =
+			BasicPolymorphicTypeValidator
+				.builder()
+				.allowIfBaseType(Any::class.java)
+				.build()
 
-        val typeValidator = BasicPolymorphicTypeValidator.builder()
-            .allowIfBaseType(Any::class.java)
-            .build()
+		redisObjectMapper.activateDefaultTyping(
+			typeValidator,
+			ObjectMapper.DefaultTyping.EVERYTHING,
+			JsonTypeInfo.As.PROPERTY,
+		)
 
-        redisObjectMapper.activateDefaultTyping(
-            typeValidator,
-            ObjectMapper.DefaultTyping.EVERYTHING,
-            JsonTypeInfo.As.PROPERTY,
-        )
+		val serializer = GenericJackson2JsonRedisSerializer(redisObjectMapper)
 
-        val serializer = GenericJackson2JsonRedisSerializer(redisObjectMapper)
+		val cacheConfiguration =
+			RedisCacheConfiguration
+				.defaultCacheConfig()
+				.entryTtl(Duration.ofMinutes(10))
+				.disableCachingNullValues()
+				.serializeKeysWith(
+					RedisSerializationContext.SerializationPair.fromSerializer(StringRedisSerializer()),
+				).serializeValuesWith(
+					RedisSerializationContext.SerializationPair.fromSerializer(serializer),
+				)
 
-        val cacheConfiguration = RedisCacheConfiguration
-            .defaultCacheConfig()
-            .entryTtl(Duration.ofMinutes(10))
-            .disableCachingNullValues()
-            .serializeKeysWith(
-                RedisSerializationContext.SerializationPair.fromSerializer(StringRedisSerializer()),
-            )
-            .serializeValuesWith(
-                RedisSerializationContext.SerializationPair.fromSerializer(serializer),
-            )
-
-        return RedisCacheManager.builder(connectionFactory)
-            .cacheDefaults(cacheConfiguration)
-            .build()
-    }
+		return RedisCacheManager
+			.builder(connectionFactory)
+			.cacheDefaults(cacheConfiguration)
+			.build()
+	}
 }
