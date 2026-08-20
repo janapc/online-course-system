@@ -88,3 +88,10 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 tasks.named<Jar>("jar") {
 	enabled = false
 }
+
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	jvmArgs = listOf(
+		"-javaagent:${projectDir}/agents/opentelemetry-javaagent.jar",
+	)
+}

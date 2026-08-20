@@ -1,42 +1,42 @@
 spring:
-    application:
-        name: online-course-system
-    datasource:
-        url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/courses}
-        username: ${SPRING_DATASOURCE_USERNAME:postgres}
-        password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  application:
+    name: online-course-system
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/courses}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
 
-    jpa:
-        hibernate:
-            ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
-    rabbitmq:
-        host: ${SPRING_RABBITMQ_HOST:localhost}
-        port: ${SPRING_RABBITMQ_PORT:5672}
-        username: ${SPRING_RABBITMQ_USERNAME:guest}
-        password: ${SPRING_RABBITMQ_PASSWORD:guest}
-        listener:
-            simple:
-                consumer-batch-enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        consumer-batch-enabled: true
 jwt:
-    secret: ${JWT_SECRET:363aaf3fa83493353483cab70d0e9af39b4da0cfa12620b742d8a3c315792a73 }
-    expiration: 86400000 # 24h
+  secret: ${JWT_SECRET:363aaf3fa83493353483cab70d0e9af39b4da0cfa12620b742d8a3c315792a73 }
+  expiration: 86400000 # 24h
 
 management:
-    endpoints:
-        web:
-            exposure:
-                include: health,info,metrics,prometheus
-    endpoint:
-        health:
-            show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  otlp:
     metrics:
-        tags:
-            application: ${spring.application.name}
-    otlp:
-        metrics:
-            export:
-                url: "http://otel-collector:4318/v1/metrics"
-                step: 10s
-    tracing:
-        sampling:
-            probability: 1.0
+      export:
+        url: "http://otel-collector:4318/v1/metrics"
+        step: 10s
+  tracing:
+    sampling:
+      probability: 1.0

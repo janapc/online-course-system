@@ -6,9 +6,9 @@ datasources:
     access: proxy
     url: http://prometheus:9090
     isDefault: true
+    uid: prometheus
     editable: true
     jsonData:
-      httpMethod: POST
       exemplarTraceIdDestinations:
         - name: trace_id
           datasourceUid: tempo
@@ -20,14 +20,24 @@ datasources:
     uid: tempo
     editable: true
     jsonData:
-      httpMethod: GET
       tracesToLogs:
         datasourceUid: loki
+        filterByTraceID: true
+        filterBySpanID: false
       serviceMap:
         datasourceUid: prometheus
       nodeGraph:
         enabled: true
-      search:
-        hide: false
-      lokiSearch:
-        datasourceUid: loki
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    uid: loki
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"trace_id":"(\w+)"'
+          name: TraceID
+          url: '$${__value.raw}'

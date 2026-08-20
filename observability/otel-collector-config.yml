@@ -8,7 +8,7 @@ receivers:
 
 processors:
   batch:
-    timeout: 10s
+    timeout: 5s
     send_batch_size: 1024
 
 exporters:
@@ -22,6 +22,10 @@ exporters:
     tls:
       insecure: true
 
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
 
   debug:
     verbosity: basic
@@ -37,3 +41,8 @@ service:
       receivers: [ otlp ]
       processors: [ batch ]
       exporters: [ otlp/tempo, debug ]
+
+    logs:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlphttp/loki, debug ]
